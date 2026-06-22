@@ -743,10 +743,45 @@ body {
   opacity: 0;
 }
 
+/* treasure compass */
+.compass {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 5px 14px;
+  box-shadow: var(--shadow);
+  font-weight: 800;
+  color: #8a5a1a;
+  z-index: 14;
+}
+.compass-ico {
+  font-size: 16px;
+}
+.compass-arrow {
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 15px solid #5a8f3a;
+  transform-origin: 50% 60%;
+}
+.compass-dist {
+  font-size: 13px;
+  min-width: 42px;
+  text-align: right;
+}
+
 /* breath bar (while swimming) */
 .breath {
   position: absolute;
-  top: 14px;
+  top: 56px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;

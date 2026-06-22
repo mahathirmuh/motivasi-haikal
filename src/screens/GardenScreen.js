@@ -729,6 +729,25 @@ export class GardenScreen {
     this.hud.toast('Turun dari perahu 🏝️');
   }
 
+  _updateCompass() {
+    const tr = this.seaLife?.treasure;
+    if (!tr || !this.hud) return;
+    const ax = this.avatar.position.x;
+    const az = this.avatar.position.z;
+    const dx = tr.position.x - ax;
+    const dz = tr.position.z - az;
+    const dist = Math.hypot(dx, dz);
+    // camera-relative angle: 0 = treasure straight ahead (arrow points up)
+    let fx = ax - this.camera.position.x;
+    let fz = az - this.camera.position.z;
+    const fl = Math.hypot(fx, fz) || 1;
+    fx /= fl;
+    fz /= fl;
+    const localF = dx * fx + dz * fz;
+    const localR = dx * -fz + dz * fx;
+    this.hud.setCompass(Math.atan2(localR, localF), dist);
+  }
+
   _checkTreasure() {
     const tr = this.seaLife?.treasure;
     if (!tr) return;
@@ -1147,6 +1166,7 @@ export class GardenScreen {
     this.butterflies?.update(dt, this.app.clock.elapsedTime, 1 - this.sky.nightLevel);
     this.seaLife?.update(dt);
     this._checkTreasure();
+    this._updateCompass();
     this.weather?.update(dt);
     if (this.weather && this.weather.state !== this._lastWeather) {
       this._lastWeather = this.weather.state;

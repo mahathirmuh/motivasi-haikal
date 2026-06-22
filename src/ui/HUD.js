@@ -220,7 +220,21 @@ export class HUD {
       el('div', { class: 'breath-bar' }, [this.breathFill]),
     ]);
 
-    root.append(top, missions, this.invEl, help, this.toastEl, this.breathEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.pauseEl, this.touchEl);
+    // treasure compass (arrow + distance)
+    this.compassArrow = el('div', { class: 'compass-arrow' });
+    this.compassDist = el('span', { class: 'compass-dist', text: '' });
+    this.compassEl = el('div', { class: 'compass' }, [
+      el('span', { class: 'compass-ico', text: '🧰' }),
+      this.compassArrow,
+      this.compassDist,
+    ]);
+
+    root.append(top, missions, this.invEl, help, this.toastEl, this.breathEl, this.compassEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.pauseEl, this.touchEl);
+  }
+
+  setCompass(angleRad, dist) {
+    this.compassArrow.style.transform = `rotate(${angleRad}rad)`;
+    this.compassDist.textContent = `${Math.round(dist)} m`;
   }
 
   setBreath(visible, frac = 1) {

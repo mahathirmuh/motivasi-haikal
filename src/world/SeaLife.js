@@ -30,6 +30,35 @@ function makeFish() {
   return g;
 }
 
+function makeDolphin() {
+  const g = new THREE.Group();
+  const mat = toon('#7f93a6');
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 12), mat);
+  body.scale.set(2.1, 0.78, 0.78);
+  addOutline(body, { thickness: 0.022 });
+  g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), toon('#e7eef3'));
+  belly.scale.set(1.9, 0.5, 0.6);
+  belly.position.y = -0.14;
+  g.add(belly);
+  const snout = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.5, 8), mat);
+  snout.rotation.z = -Math.PI / 2;
+  snout.position.x = 1.15;
+  g.add(snout);
+  const dorsal = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.42, 4), mat);
+  dorsal.position.set(-0.1, 0.42, 0);
+  dorsal.rotation.z = -0.3;
+  addOutline(dorsal, { thickness: 0.014 });
+  g.add(dorsal);
+  const fluke = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.4, 4), mat);
+  fluke.rotation.z = Math.PI / 2;
+  fluke.scale.set(1, 1, 0.3);
+  fluke.position.x = -1.05;
+  addOutline(fluke, { thickness: 0.014 });
+  g.add(fluke);
+  return g;
+}
+
 function makeTreasure() {
   const g = new THREE.Group();
   const part = (geo, c, t = 0.018) => {
@@ -109,6 +138,57 @@ export class SeaLife {
     scene.add(this.treasure);
     this.treasureBaseY = ISLAND.seaY + 0.05;
     this.relocateTreasure();
+
+    // leaping dolphins
+    this.dolphins = [];
+    for (let i = 0; i < 2; i++) {
+      const d = makeDolphin();
+      d.visible = false;
+      d.userData = { active: false, timer: 2 + Math.random() * 6, t: 0, dur: 2, height: 4, start: new THREE.Vector3(), end: new THREE.Vector3() };
+      this.dolphins.push(d);
+      scene.add(d);
+    }
+  }
+
+  _spawnDolphin(d) {
+    const u = d.userData;
+    const a = Math.random() * Math.PI * 2;
+    const r = 12 + Math.random() * 16;
+    const cx = Math.cos(a) * r;
+    const cz = Math.sin(a) * r;
+    const tang = a + Math.PI / 2;
+    const len = 5 + Math.random() * 3;
+    u.start.set(cx - Math.cos(tang) * len * 0.5, ISLAND.seaY - 0.4, cz - Math.sin(tang) * len * 0.5);
+    u.end.set(cx + Math.cos(tang) * len * 0.5, ISLAND.seaY - 0.4, cz + Math.sin(tang) * len * 0.5);
+    u.height = 3 + Math.random() * 2;
+    u.dur = 1.7 + Math.random() * 0.6;
+    u.t = 0;
+    u.active = true;
+    d.visible = true;
+  }
+
+  _updateDolphin(d, dt) {
+    const u = d.userData;
+    if (!u.active) {
+      u.timer -= dt;
+      if (u.timer <= 0) this._spawnDolphin(d);
+      return;
+    }
+    u.t += dt;
+    const k = u.t / u.dur;
+    if (k >= 1) {
+      u.active = false;
+      d.visible = false;
+      u.timer = 5 + Math.random() * 8;
+      return;
+    }
+    d.position.set(
+      u.start.x + (u.end.x - u.start.x) * k,
+      u.start.y + Math.sin(k * Math.PI) * u.height,
+      u.start.z + (u.end.z - u.start.z) * k
+    );
+    d.rotation.y = Math.atan2(u.end.x - u.start.x, u.end.z - u.start.z) + Math.PI / 2;
+    d.rotation.z = Math.cos(k * Math.PI) * 1.0; // nose up then down
   }
 
   relocateTreasure() {
@@ -137,6 +217,9 @@ export class SeaLife {
       this.treasure.position.y = this.treasureBaseY + Math.sin(t * 1.5) * 0.08;
       this.treasure.rotation.y += dt * 0.4;
     }
+
+    // dolphins
+    for (const d of this.dolphins) this._updateDolphin(d, dt);
 
     // leaping fish
     if (!this.active) {
