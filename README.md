@@ -40,6 +40,8 @@ real `.glb` models / audio later.
   occasional **rain** (which auto-waters the garden) clearing into a **rainbow**.
 - **Flower album + achievements**: a collection panel tracking discovered/
   harvested flowers, and unlockable achievements with progress.
+- **Upgrades**: spend coins on permanent upgrades — faster growth (Pupuk),
+  bigger harvest payouts (Panen Emas), and an auto-watering sprinkler.
 - **Touch controls**: on touch devices an on-screen joystick + action button
   appear automatically, so it's fully playable on a phone.
 - **Audio (Howler.js)**: a calming ocean + wind ambiance loop, gentle music, and
@@ -82,6 +84,7 @@ Requires Node 18+.
 | `B` | Open the seed shop |
 | `G` | Open the flower album |
 | `T` | Open achievements |
+| `U` | Open upgrades |
 | `M` | Toggle sound |
 | `C` | Open character customization |
 

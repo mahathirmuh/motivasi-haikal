@@ -11,6 +11,7 @@ function freshState() {
     bouquet: { rose: 0, tulip: 0, sunflower: 0, lily: 0 },
     selectedSeed: 'rose',
     muted: false,
+    upgrades: { growth: 0, coin: 0, sprinkler: 0 },
     // stats
     plantsPlanted: 0,
     harvests: 0,
@@ -38,6 +39,7 @@ class GameState {
         this.data.profile = { ...DEFAULT_PROFILE, ...(parsed.profile || {}) };
         this.data.seeds = { ...base.seeds, ...(parsed.seeds || {}) };
         this.data.bouquet = { ...base.bouquet, ...(parsed.bouquet || {}) };
+        this.data.upgrades = { ...base.upgrades, ...(parsed.upgrades || {}) };
         if (!Array.isArray(parsed.missions) || parsed.missions.length === 0) {
           this.data.missions = generateMissions(MISSION_COUNT);
         }

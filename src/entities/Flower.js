@@ -4,6 +4,7 @@ import { toon } from '../gfx/toon.js';
 import { addOutline } from '../gfx/outline.js';
 import { getFlower } from '../config/flowers.js';
 import { GROWTH, STAGES } from '../config/constants.js';
+import { mods } from '../core/modifiers.js';
 
 function mesh(geo, color, { outline = true, thickness = 0.015 } = {}) {
   const m = new THREE.Mesh(geo, toon(color));
@@ -162,7 +163,7 @@ export class Flower {
     if (this.stage !== STAGES.BLOOM) {
       const dur = this.stage === STAGES.SEED ? GROWTH.seedToSprout : GROWTH.sproutToBloom;
       const boost = this.wet > 0 ? GROWTH.waterBoost : 1;
-      this.progress += (dt / dur) * boost;
+      this.progress += (dt / dur) * boost * (mods.growthMul || 1);
       if (this.progress >= 1) {
         this.progress = 0;
         this.stage += 1;

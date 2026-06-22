@@ -4,23 +4,27 @@ import { el, uiRoot } from '../utils/dom.js';
 import { FLOWERS, FLOWER_IDS } from '../config/flowers.js';
 import { SHOP_PRICES } from '../config/constants.js';
 import { ACHIEVEMENTS } from '../config/achievements.js';
+import { UPGRADES, upgradeCost } from '../config/upgrades.js';
 
 export class HUD {
-  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction }) {
+  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction, onBuyUpgrade }) {
     this.onSelectSeed = onSelectSeed || (() => {});
     this.onToggleMute = onToggleMute || (() => {});
     this.onCustomize = onCustomize || (() => {});
     this.onBuySeed = onBuySeed || (() => {});
     this.onAction = onAction || (() => {});
+    this.onBuyUpgrade = onBuyUpgrade || (() => {});
     this.seedSlots = {};
     this._toastTimer = null;
     this._coins = 0;
     this._seeds = {};
     this._bouquet = {};
     this._stats = {};
+    this._upgrades = {};
     this._shopOpen = false;
     this._albumOpen = false;
     this._achOpen = false;
+    this._upgOpen = false;
     this.joy = { x: 0, y: 0 }; // touch joystick vector
     this._build();
   }
@@ -32,6 +36,11 @@ export class HUD {
     this.coinsEl = el('span', { text: '0' });
     const coins = el('div', { class: 'hud-coins' }, [el('span', { class: 'coin', text: '🪙' }), this.coinsEl]);
 
+    const upgBtn = el(
+      'button',
+      { class: 'btn btn--ghost hud-icon-btn', title: 'Upgrade (U)', onClick: () => this.toggleUpg() },
+      '🔧'
+    );
     const achBtn = el(
       'button',
       { class: 'btn btn--ghost hud-icon-btn', title: 'Pencapaian (T)', onClick: () => this.toggleAch() },
@@ -59,7 +68,7 @@ export class HUD {
     );
     const top = el('div', { class: 'hud-top' }, [
       coins,
-      el('div', { class: 'hud-top-right' }, [achBtn, albumBtn, shopBtn, this.musicBtn, custBtn]),
+      el('div', { class: 'hud-top-right' }, [upgBtn, achBtn, albumBtn, shopBtn, this.musicBtn, custBtn]),
     ]);
 
     // missions
@@ -131,6 +140,19 @@ export class HUD {
       if (e.target === this.achEl) this.closeAch();
     } }, [achPanel]);
 
+    // upgrades (hidden until opened)
+    this.upgBody = el('div', { class: 'shop-body' });
+    this.upgCoins = el('span', {});
+    const upgPanel = el('div', { class: 'shop-panel' }, [
+      el('button', { class: 'shop-close', title: 'Tutup', onClick: () => this.closeUpg() }, '✕'),
+      el('h3', { text: '🔧 Upgrade' }),
+      el('div', { class: 'shop-coins' }, [el('span', { class: 'coin', text: '🪙' }), this.upgCoins]),
+      this.upgBody,
+    ]);
+    this.upgEl = el('div', { class: 'shop-modal hidden', onClick: (e) => {
+      if (e.target === this.upgEl) this.closeUpg();
+    } }, [upgPanel]);
+
     // touch controls (shown on coarse-pointer devices via CSS)
     this.joyKnob = el('div', { class: 'joy-knob' });
     this.joyBase = el('div', { class: 'joy-base' }, [this.joyKnob]);
@@ -138,7 +160,7 @@ export class HUD {
     this.touchEl = el('div', { class: 'touch-controls' }, [this.joyBase, actionBtn]);
     this._bindJoystick(actionBtn);
 
-    root.append(top, missions, this.invEl, help, this.toastEl, this.shopEl, this.albumEl, this.achEl, this.touchEl);
+    root.append(top, missions, this.invEl, help, this.toastEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.touchEl);
   }
 
   _bindJoystick(actionBtn) {
@@ -182,6 +204,54 @@ export class HUD {
     this._coins = n;
     this.coinsEl.textContent = String(n);
     if (this._shopOpen) this._renderShop();
+    if (this._upgOpen) this._renderUpg();
+  }
+
+  setUpgrades(upgrades) {
+    this._upgrades = upgrades || {};
+    if (this._upgOpen) this._renderUpg();
+  }
+
+  toggleUpg() {
+    this._upgOpen ? this.closeUpg() : this.openUpg();
+  }
+  openUpg() {
+    this._upgOpen = true;
+    this.upgEl.classList.remove('hidden');
+    this._renderUpg();
+  }
+  closeUpg() {
+    this._upgOpen = false;
+    this.upgEl.classList.add('hidden');
+  }
+
+  _renderUpg() {
+    this.upgCoins.textContent = String(this._coins);
+    while (this.upgBody.firstChild) this.upgBody.removeChild(this.upgBody.firstChild);
+    for (const u of UPGRADES) {
+      const level = this._upgrades[u.id] || 0;
+      const maxed = level >= u.max;
+      const cost = maxed ? 0 : upgradeCost(u, level);
+      const afford = this._coins >= cost;
+      const dots = '●'.repeat(level) + '○'.repeat(u.max - level);
+      const buy = el(
+        'button',
+        {
+          class: 'btn btn--ghost shop-buy' + (maxed || !afford ? ' disabled' : ''),
+          onClick: () => !maxed && afford && this.onBuyUpgrade(u.id),
+        },
+        maxed ? 'MAX' : `${cost} 🪙`
+      );
+      const row = el('div', { class: 'shop-row' }, [
+        el('span', { class: 'shop-ico', text: u.icon }),
+        el('div', { class: 'ach-info' }, [
+          el('div', { class: 'ach-name', text: `${u.name}  ${dots}` }),
+          el('div', { class: 'ach-desc', text: u.desc }),
+        ]),
+        buy,
+      ]);
+      this.upgBody.appendChild(row);
+    }
   }
 
   setInventory(seeds) {

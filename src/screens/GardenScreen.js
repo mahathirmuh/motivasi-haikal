@@ -17,6 +17,8 @@ import { state } from '../core/state.js';
 import { GRID, ISLAND, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH, SHOP_PRICES } from '../config/constants.js';
 import { getFlower, FLOWER_IDS } from '../config/flowers.js';
 import { ACHIEVEMENTS } from '../config/achievements.js';
+import { getUpgrade, upgradeCost } from '../config/upgrades.js';
+import { mods, recomputeMods } from '../core/modifiers.js';
 
 export class GardenScreen {
   constructor(app) {
@@ -93,7 +95,10 @@ export class GardenScreen {
       onCustomize: () => this._openCustomize(),
       onBuySeed: (type) => this._buySeed(type),
       onAction: () => this._keyboardInteract(),
+      onBuyUpgrade: (id) => this._buyUpgrade(id),
     });
+
+    recomputeMods(); // apply persisted upgrades
 
     // track already-unlocked achievements so only NEW ones toast
     this._achUnlocked = new Set(ACHIEVEMENTS.filter((a) => this._statValue(a.metric) >= a.goal).map((a) => a.id));
@@ -160,6 +165,7 @@ export class GardenScreen {
       else if (k === 'b') this.hud.toggleShop();
       else if (k === 'g') this.hud.toggleAlbum();
       else if (k === 't') this.hud.toggleAch();
+      else if (k === 'u') this.hud.toggleUpg();
       else if (k === 'm') this.hud.setMuted(this.app.audio?.toggleMute());
       else if (k === 'c') this._openCustomize();
     };
@@ -281,6 +287,26 @@ export class GardenScreen {
     this._refreshHUD();
   }
 
+  _buyUpgrade(id) {
+    const u = getUpgrade(id);
+    if (!u) return;
+    const level = state.data.upgrades[id] || 0;
+    if (level >= u.max) return;
+    const cost = upgradeCost(u, level);
+    if (state.data.coins < cost) {
+      this.hud.toast('Koin tidak cukup 😅');
+      this.app.audio?.play('click');
+      return;
+    }
+    state.data.coins -= cost;
+    state.data.upgrades[id] = level + 1;
+    state.save();
+    recomputeMods();
+    this.app.audio?.play('ding');
+    this.hud.toast(`Upgrade ${u.name} Lv.${level + 1} ✨`);
+    this._refreshHUD();
+  }
+
   _standPoint(plot) {
     const p = plot.position;
     const dir = new THREE.Vector3(this.avatar.position.x - p.x, 0, this.avatar.position.z - p.z);
@@ -340,14 +366,15 @@ export class GardenScreen {
     const flower = plot.flower?.type;
     const type = plot.harvest();
     if (!type) return;
+    const coins = Math.round(HARVEST_COINS * (mods.coinMul || 1));
     state.addSeeds(type, HARVEST_SEED_REWARD);
-    state.addCoins(HARVEST_COINS);
+    state.addCoins(coins);
     state.recordHarvest(type);
     this.app.audio?.play('ding');
     this._fxAtPlot(plot, flower, 'harvest');
-    this._floatCoins(plot, HARVEST_COINS);
-    this.hud.toast(`Panen ${getFlower(type).name}! +${HARVEST_COINS} 🪙`);
-    const done = [...state.missionEvent('harvest'), ...state.missionEvent('earn', { amount: HARVEST_COINS })];
+    this._floatCoins(plot, coins);
+    this.hud.toast(`Panen ${getFlower(type).name}! +${coins} 🪙`);
+    const done = [...state.missionEvent('harvest'), ...state.missionEvent('earn', { amount: coins })];
     this._handleCompletions(done);
     this._afterAction();
   }
@@ -452,6 +479,7 @@ export class GardenScreen {
     this.hud.setMissions(state.data.missions);
     this.hud.setAlbum(state.data.bouquet);
     this.hud.setAchievements(this._stats());
+    this.hud.setUpgrades(state.data.upgrades);
     this.hud.setMuted(!!state.data.muted);
     this._checkAchievements();
   }
@@ -487,10 +515,11 @@ export class GardenScreen {
     this.butterflies?.update(dt, this.app.clock.elapsedTime, 1 - this.sky.nightLevel);
     this.seaLife?.update(dt);
     this.weather?.update(dt);
-    // rain keeps the garden watered (growth boost) without manual watering
-    if (this.weather?.isRaining) {
+    // rain or the auto-sprinkler keeps the garden watered (growth boost)
+    const autoWet = this.weather?.isRaining ? 0.4 : mods.sprinkler > 0 ? 0.1 + 0.15 * mods.sprinkler : 0;
+    if (autoWet > 0) {
       for (const plot of this.plots) {
-        if (plot.flower && !plot.flower.isBloom) plot.flower.wet = Math.max(plot.flower.wet, 0.4);
+        if (plot.flower && !plot.flower.isBloom) plot.flower.wet = Math.max(plot.flower.wet, autoWet);
       }
     }
 
