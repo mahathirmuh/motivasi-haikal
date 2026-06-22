@@ -63,6 +63,7 @@ export class GardenScreen {
     this.sky.setDayNight(this.dayTime, this.lights);
     this.fishing = { state: 'idle', timer: 0, bobber: null, baseY: 0 };
     this._drowning = false;
+    this._swimming = false;
 
     // garden fairy (motivational NPC) + pet companion
     this.npc = new Npc(this.scene, new THREE.Vector3(-7, 0, -3));
@@ -118,12 +119,11 @@ export class GardenScreen {
       onBuySeed: (type) => this._buySeed(type),
       onAction: () => this._keyboardInteract(),
       onBuyUpgrade: (id) => this._buyUpgrade(id),
-      onJump: () => {
-        if (this.avatar.jump()) this.app.audio?.play('jump');
-      },
+      onJump: () => this._tryJump(),
       onFish: () => this._fish(),
       onReset: () => this._resetGame(),
       onWeather: () => this._cycleWeather(),
+      onUiSound: () => this.app.audio?.play('click'),
     });
     this._lastWeather = null;
 
@@ -187,9 +187,7 @@ export class GardenScreen {
       if (e.repeat) return;
       this.keys.add(k);
       if (k === 'e') this._keyboardInteract();
-      else if (k === ' ') {
-        if (this.avatar.jump()) this.app.audio?.play('jump');
-      }
+      else if (k === ' ') this._tryJump();
       else if (k === 'f') this._fish();
       else if (k === 'h') this._cycleWeather();
       else if (k === 'escape') this._onEscape();
@@ -536,6 +534,11 @@ export class GardenScreen {
     return this.fishing && this.fishing.state !== 'idle';
   }
 
+  _tryJump() {
+    if (this._swimming || this._drowning || this._isFishing()) return;
+    if (this.avatar.jump()) this.app.audio?.play('jump');
+  }
+
   _cancelFishing() {
     if (!this._isFishing()) return;
     this.app.audio?.play('click');
@@ -544,39 +547,82 @@ export class GardenScreen {
     this.hud.toast('Memancing dibatalkan');
   }
 
-  // ---------- drowning ----------
-  _updateDrown(dt) {
+  // ---------- water: swim near the shore, then drown if too far ----------
+  _updateWater(dt) {
+    const SWIM_TIME = 6;
+    const LAND_R = ISLAND.sandR; // beyond this you're in the water
+    const SWIM_MAX = ISLAND.sandR + 7; // too far -> instant drown
+
     if (this._drowning) {
       this._drownT += dt;
-      this.avatar.root.position.y = -this._drownT * 3; // sink under the sea
+      this.avatar.root.position.y = ISLAND.seaY - this._drownT * 2.5; // sink under
       this.avatar.root.rotation.y += dt * 5;
-      if (this._drownT >= 0.95) {
-        this._drowning = false;
-        this.avatar.root.position.set(0, 0, 6); // respawn on the island
-        this.avatar.root.rotation.y = Math.PI;
-        this.avatar._faceTarget = Math.PI;
-        this.avatar.vy = 0;
-        this.avatar.airY = 0;
-        this.avatar.stop();
+      this._bubbleT = (this._bubbleT || 0) + dt;
+      if (this._bubbleT > 0.12) {
+        this._bubbleT = 0;
+        this.particles?.bubbles(new THREE.Vector3(this.avatar.position.x, ISLAND.seaY + 0.3, this.avatar.position.z), 4);
       }
+      if (this._drownT >= 0.95) this._respawn();
       return;
     }
+
     const p = this.avatar.root.position;
-    if (Math.hypot(p.x, p.z) > ISLAND.sandR + 0.5) this._startDrown();
+    const r = Math.hypot(p.x, p.z);
+    if (r > SWIM_MAX) {
+      this._startDrown();
+      return;
+    }
+    if (r > LAND_R) {
+      // swimming — slower, floats at the surface, breath runs down
+      if (!this._swimming) {
+        this._swimming = true;
+        this._breath = SWIM_TIME;
+        this.avatar.speedMul = 0.6;
+        this.app.audio?.play('water');
+        this.hud.toast('Berenang! 🏊 cepat kembali ke darat');
+      }
+      this._breath -= dt;
+      this.avatar.root.position.y = ISLAND.seaY + 0.25 + Math.sin(this.app.clock.elapsedTime * 4) * 0.06;
+      this.hud.setBreath(true, Math.max(0, this._breath / SWIM_TIME));
+      this._bubbleT = (this._bubbleT || 0) + dt;
+      if (this._bubbleT > 0.5) {
+        this._bubbleT = 0;
+        this.particles?.bubbles(new THREE.Vector3(p.x, ISLAND.seaY + 0.3, p.z), 2);
+      }
+      if (this._breath <= 0) this._startDrown();
+    } else if (this._swimming) {
+      // back on land — safe
+      this._swimming = false;
+      this.avatar.speedMul = 1;
+      this.avatar.root.position.y = 0;
+      this.hud.setBreath(false);
+    }
   }
 
   _startDrown() {
     this._drowning = true;
     this._drownT = 0;
+    this._swimming = false;
+    this.avatar.speedMul = 1;
     this.avatar.stop();
     this._cancelFishing();
+    this.hud.setBreath(false);
     this.app.audio?.play('water');
-    this.particles?.burst(
-      new THREE.Vector3(this.avatar.position.x, 0.2, this.avatar.position.z),
-      ['#bfe9ff', '#7fc7d8', '#ffffff'],
-      18
-    );
+    this.particles?.bubbles(new THREE.Vector3(this.avatar.position.x, ISLAND.seaY + 0.3, this.avatar.position.z), 10);
     this.hud.toast('Byuur! 🌊 Kembali ke pulau...');
+  }
+
+  _respawn() {
+    this._drowning = false;
+    this._swimming = false;
+    this.avatar.speedMul = 1;
+    this.avatar.root.position.set(0, 0, 6);
+    this.avatar.root.rotation.y = Math.PI;
+    this.avatar._faceTarget = Math.PI;
+    this.avatar.vy = 0;
+    this.avatar.airY = 0;
+    this.avatar.stop();
+    this.hud.setBreath(false);
   }
 
   _spawnBobber() {
@@ -889,7 +935,7 @@ export class GardenScreen {
   update(dt) {
     this._applyKeyboard();
     this.avatar.update(dt, this.app.audio);
-    this._updateDrown(dt); // wander too far into the sea => sink & respawn
+    this._updateWater(dt); // swim near shore, then sink & respawn if too far
     for (const plot of this.plots) {
       if (plot.update(dt)) this._onBloom(plot);
     }

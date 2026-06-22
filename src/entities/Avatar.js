@@ -86,6 +86,7 @@ export class Avatar {
     this.parts = {};
     this.vy = 0; // vertical velocity (jump)
     this.airY = 0; // height above ground
+    this.speedMul = 1; // movement speed multiplier (e.g. slower while swimming)
     // optional GLTF model + animation
     this.mixer = null;
     this.walkAction = null;
@@ -626,14 +627,15 @@ export class Avatar {
   update(dt, audio = null) {
     this.time += dt;
     let moving01 = 0;
+    const spd = AVATAR.speed * (this.speedMul ?? 1);
 
     if (this.moveDir.lengthSq() > 1e-4) {
       // keyboard / directional movement
       const len = Math.hypot(this.moveDir.x, this.moveDir.z);
       const nx = this.moveDir.x / len;
       const nz = this.moveDir.z / len;
-      this.root.position.x += nx * AVATAR.speed * dt;
-      this.root.position.z += nz * AVATAR.speed * dt;
+      this.root.position.x += nx * spd * dt;
+      this.root.position.z += nz * spd * dt;
       this._faceTarget = Math.atan2(nx, nz);
       moving01 = 1;
       if (audio) audio.footstep(this.time);
@@ -647,7 +649,7 @@ export class Avatar {
         this._onArrive = null;
         if (cb) cb();
       } else {
-        const step = Math.min(dist, AVATAR.speed * dt);
+        const step = Math.min(dist, spd * dt);
         const nx = dx / dist;
         const nz = dz / dist;
         this.root.position.x += nx * step;

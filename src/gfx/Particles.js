@@ -35,9 +35,38 @@ export class Particles {
         mesh: m,
         vel: new THREE.Vector3(Math.cos(ang) * spd * 0.6, 2.4 + Math.random() * 2.2, Math.sin(ang) * spd * 0.6),
         spin: new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8),
+        grav: 6.5,
         life: 0,
         ttl: 0.9 + Math.random() * 0.5,
         scale: 0.7 + Math.random() * 0.8,
+      };
+      m.scale.setScalar(p.scale);
+      this.group.add(m);
+      this.alive.push(p);
+    }
+  }
+
+  /** Rising water bubbles (e.g. while drowning). */
+  bubbles(pos, count = 6) {
+    for (let i = 0; i < count; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: i % 2 ? 0xffffff : 0xbfe9ff,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+      });
+      const m = new THREE.Mesh(GEO, mat);
+      m.position.copy(pos);
+      m.position.x += (Math.random() - 0.5) * 0.5;
+      m.position.z += (Math.random() - 0.5) * 0.5;
+      const p = {
+        mesh: m,
+        vel: new THREE.Vector3((Math.random() - 0.5) * 0.6, 1.2 + Math.random() * 1.4, (Math.random() - 0.5) * 0.6),
+        spin: new THREE.Vector3(0, 0, (Math.random() - 0.5) * 4),
+        grav: 1.6, // rise then slow (much less than normal gravity)
+        life: 0,
+        ttl: 0.8 + Math.random() * 0.6,
+        scale: 0.3 + Math.random() * 0.4,
       };
       m.scale.setScalar(p.scale);
       this.group.add(m);
@@ -55,7 +84,7 @@ export class Particles {
         this.alive.splice(i, 1);
         continue;
       }
-      p.vel.y -= 6.5 * dt; // gravity
+      p.vel.y -= (p.grav ?? 6.5) * dt; // gravity (bubbles use a small value to rise)
       p.mesh.position.addScaledVector(p.vel, dt);
       p.mesh.rotation.x += p.spin.x * dt;
       p.mesh.rotation.y += p.spin.y * dt;

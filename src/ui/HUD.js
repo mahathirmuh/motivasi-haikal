@@ -7,7 +7,7 @@ import { ACHIEVEMENTS } from '../config/achievements.js';
 import { UPGRADES, upgradeCost } from '../config/upgrades.js';
 
 export class HUD {
-  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction, onBuyUpgrade, onJump, onFish, onReset, onWeather }) {
+  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction, onBuyUpgrade, onJump, onFish, onReset, onWeather, onUiSound }) {
     this.onSelectSeed = onSelectSeed || (() => {});
     this.onToggleMute = onToggleMute || (() => {});
     this.onCustomize = onCustomize || (() => {});
@@ -18,6 +18,7 @@ export class HUD {
     this.onFish = onFish || (() => {});
     this.onReset = onReset || (() => {});
     this.onWeather = onWeather || (() => {});
+    this.onUiSound = onUiSound || (() => {});
     this._pauseOpen = false;
     this.seedSlots = {};
     this._toastTimer = null;
@@ -212,7 +213,19 @@ export class HUD {
       if (e.target === this.pauseEl) this.closePause();
     } }, [pausePanel]);
 
-    root.append(top, missions, this.invEl, help, this.toastEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.pauseEl, this.touchEl);
+    // breath bar (shown while swimming)
+    this.breathFill = el('i', {});
+    this.breathEl = el('div', { class: 'breath hidden' }, [
+      el('span', { class: 'breath-label', text: '🫧 Napas' }),
+      el('div', { class: 'breath-bar' }, [this.breathFill]),
+    ]);
+
+    root.append(top, missions, this.invEl, help, this.toastEl, this.breathEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.pauseEl, this.touchEl);
+  }
+
+  setBreath(visible, frac = 1) {
+    this.breathEl.classList.toggle('hidden', !visible);
+    if (visible) this.breathFill.style.width = `${Math.max(0, Math.min(100, frac * 100))}%`;
   }
 
   setWeatherIcon(state) {
@@ -231,6 +244,7 @@ export class HUD {
     this.closePause();
   }
   togglePause() {
+    this.onUiSound();
     this._pauseOpen ? this.closePause() : this.openPause();
   }
   openPause() {
@@ -297,6 +311,7 @@ export class HUD {
   }
 
   toggleUpg() {
+    this.onUiSound();
     this._upgOpen ? this.closeUpg() : this.openUpg();
   }
   openUpg() {
@@ -347,6 +362,7 @@ export class HUD {
   }
 
   toggleShop() {
+    this.onUiSound();
     this._shopOpen ? this.closeShop() : this.openShop();
   }
   openShop() {
@@ -388,6 +404,7 @@ export class HUD {
   }
 
   toggleAlbum() {
+    this.onUiSound();
     this._albumOpen ? this.closeAlbum() : this.openAlbum();
   }
   openAlbum() {
@@ -423,6 +440,7 @@ export class HUD {
   }
 
   toggleAch() {
+    this.onUiSound();
     this._achOpen ? this.closeAch() : this.openAch();
   }
   openAch() {

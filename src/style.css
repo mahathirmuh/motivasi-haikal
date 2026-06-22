@@ -735,6 +735,45 @@ body {
   opacity: 0;
 }
 
+/* breath bar (while swimming) */
+.breath {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  box-shadow: var(--shadow);
+  z-index: 16;
+}
+.breath.hidden {
+  display: none;
+}
+.breath-label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #2f7fa8;
+}
+.breath-bar {
+  width: 120px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(120, 92, 56, 0.15);
+  overflow: hidden;
+}
+.breath-bar > i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #7fc7d8, #2f8fb0);
+  transition: width 0.15s linear;
+}
+
 /* NPC speech bubble */
 .npc-bubble {
   position: absolute;
