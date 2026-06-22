@@ -14,7 +14,9 @@ export class HUD {
     this._toastTimer = null;
     this._coins = 0;
     this._seeds = {};
+    this._bouquet = {};
     this._shopOpen = false;
+    this._albumOpen = false;
     this._build();
   }
 
@@ -25,6 +27,11 @@ export class HUD {
     this.coinsEl = el('span', { text: '0' });
     const coins = el('div', { class: 'hud-coins' }, [el('span', { class: 'coin', text: '🪙' }), this.coinsEl]);
 
+    const albumBtn = el(
+      'button',
+      { class: 'btn btn--ghost hud-icon-btn', title: 'Album bunga (G)', onClick: () => this.toggleAlbum() },
+      '🏵️'
+    );
     const shopBtn = el(
       'button',
       { class: 'btn btn--ghost hud-icon-btn', title: 'Toko bibit (B)', onClick: () => this.toggleShop() },
@@ -42,7 +49,7 @@ export class HUD {
     );
     const top = el('div', { class: 'hud-top' }, [
       coins,
-      el('div', { class: 'hud-top-right' }, [shopBtn, this.musicBtn, custBtn]),
+      el('div', { class: 'hud-top-right' }, [albumBtn, shopBtn, this.musicBtn, custBtn]),
     ]);
 
     // missions
@@ -88,7 +95,20 @@ export class HUD {
       if (e.target === this.shopEl) this.closeShop();
     } }, [shopPanel]);
 
-    root.append(top, missions, this.invEl, help, this.toastEl, this.shopEl);
+    // album (hidden until opened) — reuses the shop modal styling
+    this.albumBody = el('div', { class: 'shop-body' });
+    this.albumCount = el('span', {});
+    const albumPanel = el('div', { class: 'shop-panel' }, [
+      el('button', { class: 'shop-close', title: 'Tutup', onClick: () => this.closeAlbum() }, '✕'),
+      el('h3', { text: '🏵️ Album Bunga' }),
+      el('div', { class: 'shop-coins' }, ['Ditemukan: ', this.albumCount]),
+      this.albumBody,
+    ]);
+    this.albumEl = el('div', { class: 'shop-modal hidden', onClick: (e) => {
+      if (e.target === this.albumEl) this.closeAlbum();
+    } }, [albumPanel]);
+
+    root.append(top, missions, this.invEl, help, this.toastEl, this.shopEl, this.albumEl);
   }
 
   setCoins(n) {
@@ -138,6 +158,41 @@ export class HUD {
         buy,
       ]);
       this.shopBody.appendChild(row);
+    }
+  }
+
+  setAlbum(bouquet) {
+    this._bouquet = bouquet || {};
+    if (this._albumOpen) this._renderAlbum();
+  }
+
+  toggleAlbum() {
+    this._albumOpen ? this.closeAlbum() : this.openAlbum();
+  }
+  openAlbum() {
+    this._albumOpen = true;
+    this.albumEl.classList.remove('hidden');
+    this._renderAlbum();
+  }
+  closeAlbum() {
+    this._albumOpen = false;
+    this.albumEl.classList.add('hidden');
+  }
+
+  _renderAlbum() {
+    const discovered = FLOWER_IDS.filter((id) => (this._bouquet[id] || 0) > 0).length;
+    this.albumCount.textContent = `${discovered}/${FLOWER_IDS.length}`;
+    while (this.albumBody.firstChild) this.albumBody.removeChild(this.albumBody.firstChild);
+    for (const id of FLOWER_IDS) {
+      const f = FLOWERS[id];
+      const n = this._bouquet[id] || 0;
+      const found = n > 0;
+      const row = el('div', { class: 'shop-row' + (found ? '' : ' locked') }, [
+        el('span', { class: 'shop-ico', text: found ? f.icon : '❔' }),
+        el('span', { class: 'shop-name', text: found ? f.name : '???' }),
+        el('span', { class: 'shop-own', text: found ? `dipanen x${n}` : 'belum ditemukan' }),
+      ]);
+      this.albumBody.appendChild(row);
     }
   }
 

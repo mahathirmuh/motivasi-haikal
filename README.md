@@ -35,8 +35,11 @@ real `.glb` models / audio later.
   floating coin numbers**, a **bloom sparkle** when a flower opens, and a
   **dynamic mission checklist** that rotates: each finished mission is replaced
   by a fresh random one (plant N, plant a type, harvest N, water N, earn N coins).
-- **Living scene**: fireflies drift over the island at night, and fish leap out
-  of the sea near the shore.
+- **Living scene & weather**: butterflies flutter by day, fireflies drift at
+  night, fish leap from the sea, and occasional **rain** (which auto-waters the
+  garden) clears into a **rainbow**.
+- **Flower album**: a collection panel tracking which flowers you've discovered
+  and how many you've harvested.
 - **Audio (Howler.js)**: a calming ocean + wind ambiance loop, gentle music, and
   SFX for footsteps, watering, harvest, and UI — all synthesized to WAV at
   runtime (no audio files needed).
@@ -75,6 +78,7 @@ Requires Node 18+.
 | `E` or `Space` | Act on the nearest plot (plant / water / harvest) |
 | `1` `2` `3` `4` | Select seed (Mawar / Tulip / Matahari / Lily) |
 | `B` | Open the seed shop |
+| `G` | Open the flower album |
 | `M` | Toggle sound |
 | `C` | Open character customization |
 

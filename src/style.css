@@ -545,6 +545,10 @@ body {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.shop-row.locked {
+  opacity: 0.5;
+  font-style: italic;
+}
 
 /* floating reward numbers */
 .float-num {

@@ -6,6 +6,8 @@ import { Island } from '../world/Island.js';
 import { Scenery } from '../world/Scenery.js';
 import { Fireflies } from '../world/Fireflies.js';
 import { SeaLife } from '../world/SeaLife.js';
+import { Butterflies } from '../world/Butterflies.js';
+import { Weather } from '../world/Weather.js';
 import { addLights, addFog } from '../gfx/lighting.js';
 import { Avatar } from '../entities/Avatar.js';
 import { Plot } from '../entities/Plot.js';
@@ -44,7 +46,9 @@ export class GardenScreen {
     this.scenery = new Scenery(this.scene);
     this.particles = new Particles(this.scene);
     this.fireflies = new Fireflies(this.scene);
+    this.butterflies = new Butterflies(this.scene);
     this.seaLife = new SeaLife(this.scene);
+    this.weather = new Weather(this.scene);
     this.dayTime = 0.18; // start mid-morning
     this.sky.setDayNight(this.dayTime, this.lights);
 
@@ -150,6 +154,7 @@ export class GardenScreen {
       else if (k === '3') this._selectSeed('sunflower');
       else if (k === '4') this._selectSeed('lily');
       else if (k === 'b') this.hud.toggleShop();
+      else if (k === 'g') this.hud.toggleAlbum();
       else if (k === 'm') this.hud.setMuted(this.app.audio?.toggleMute());
       else if (k === 'c') this._openCustomize();
     };
@@ -394,6 +399,7 @@ export class GardenScreen {
     this.hud.setInventory(state.data.seeds);
     this.hud.setSelectedSeed(state.data.selectedSeed);
     this.hud.setMissions(state.data.missions);
+    this.hud.setAlbum(state.data.bouquet);
     this.hud.setMuted(!!state.data.muted);
   }
 
@@ -425,7 +431,15 @@ export class GardenScreen {
     this.scenery?.update(dt, this.app.clock.elapsedTime);
     this.particles?.update(dt);
     this.fireflies?.update(dt, this.app.clock.elapsedTime, this.sky.nightLevel);
+    this.butterflies?.update(dt, this.app.clock.elapsedTime, 1 - this.sky.nightLevel);
     this.seaLife?.update(dt);
+    this.weather?.update(dt);
+    // rain keeps the garden watered (growth boost) without manual watering
+    if (this.weather?.isRaining) {
+      for (const plot of this.plots) {
+        if (plot.flower && !plot.flower.isBloom) plot.flower.wet = Math.max(plot.flower.wet, 0.4);
+      }
+    }
 
     // keep the shadow-casting light centred on the avatar; direction from day/night
     if (this.sun) {
