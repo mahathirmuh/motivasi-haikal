@@ -44,6 +44,17 @@ export class Npc {
       e.position.set(s * 0.1, 1.28, 0.24);
       this.group.add(e);
     }
+    // glasses
+    const frameMat = new THREE.MeshBasicMaterial({ color: 0x2a2320 });
+    for (const s of [-1, 1]) {
+      const lens = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 8, 18), frameMat);
+      lens.position.set(s * 0.1, 1.28, 0.26);
+      this.group.add(lens);
+    }
+    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.08, 6), frameMat);
+    bridge.rotation.z = Math.PI / 2;
+    bridge.position.set(0, 1.28, 0.26);
+    this.group.add(bridge);
 
     // invisible click hitbox
     this.hit = new THREE.Mesh(

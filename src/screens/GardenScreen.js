@@ -10,8 +10,10 @@ import { Butterflies } from '../world/Butterflies.js';
 import { Weather } from '../world/Weather.js';
 import { Npc } from '../world/Npc.js';
 import { Pet } from '../world/Pet.js';
+import { Boat } from '../world/Boat.js';
 import { MOTIVATION } from '../config/dialog.js';
 import { el, uiRoot } from '../utils/dom.js';
+import { dampAngle } from '../utils/math.js';
 import { addLights, addFog } from '../gfx/lighting.js';
 import { toon } from '../gfx/toon.js';
 import { addOutline } from '../gfx/outline.js';
@@ -65,6 +67,12 @@ export class GardenScreen {
     this._drowning = false;
     this._swimming = false;
 
+    // sailboat docked at the shore
+    this.boat = new Boat(this.scene, new THREE.Vector3(4, ISLAND.seaY + 0.2, ISLAND.sandR - 1));
+    this._boating = false;
+    this._boatDir = new THREE.Vector3();
+    this._boatTarget = null;
+
     // garden fairy (motivational NPC) + pet companion
     this.npc = new Npc(this.scene, new THREE.Vector3(-7, 0, -3));
     this.pet = new Pet(this.scene, new THREE.Vector3(2, 0, 7));
@@ -72,11 +80,16 @@ export class GardenScreen {
     this._npcTipCd = 0;
     this._npcBubble = el('div', { class: 'npc-bubble hidden', text: MOTIVATION[0] });
     uiRoot().appendChild(this._npcBubble);
+    this._npcTag = el('div', { class: 'name-tag npc-tag', text: 'Mahathir' });
+    uiRoot().appendChild(this._npcTag);
 
     // floating name tag above the avatar
     const nm = (state.data.profile.name || '').trim() || getPreset(state.data.profile.preset).name;
     this._nameTag = el('div', { class: 'name-tag', text: nm });
     uiRoot().appendChild(this._nameTag);
+    // pet's name tag
+    this._petTag = el('div', { class: 'name-tag pet-tag', text: 'Intan' });
+    uiRoot().appendChild(this._petTag);
 
     this._buildPlots();
 
@@ -209,6 +222,18 @@ export class GardenScreen {
   }
 
   /** Translate held movement keys into a camera-relative direction. */
+  _fillCamDir(f, s, out) {
+    const fwd = this._tmpFwd.set(
+      this.avatar.position.x - this.camera.position.x,
+      0,
+      this.avatar.position.z - this.camera.position.z
+    );
+    if (fwd.lengthSq() < 1e-4) fwd.set(0, 0, 1);
+    fwd.normalize();
+    const right = this._tmpRight.set(-fwd.z, 0, fwd.x);
+    out.set(fwd.x * f + right.x * s, 0, fwd.z * f + right.z * s);
+  }
+
   _applyKeyboard() {
     if (this._drowning || this._isFishing()) {
       this.avatar.setMoveVector(0, 0); // locked while fishing / drowning
@@ -229,24 +254,37 @@ export class GardenScreen {
         s = j.x;
       }
     }
+
+    if (this._boating) {
+      if (f === 0 && s === 0) {
+        this._boatDir.set(0, 0, 0);
+      } else {
+        this._fillCamDir(f, s, this._boatDir);
+        this._boatTarget = null; // keys override a click target
+      }
+      this.avatar.setMoveVector(0, 0);
+      return;
+    }
+
     if (f === 0 && s === 0) {
       this.avatar.setMoveVector(0, 0);
       return;
     }
-    // forward = camera -> avatar (flattened); right = forward rotated 90°
-    const fwd = this._tmpFwd.set(
-      this.avatar.position.x - this.camera.position.x,
-      0,
-      this.avatar.position.z - this.camera.position.z
-    );
-    if (fwd.lengthSq() < 1e-4) fwd.set(0, 0, 1);
-    fwd.normalize();
-    const right = this._tmpRight.set(-fwd.z, 0, fwd.x);
-    this.avatar.setMoveVector(fwd.x * f + right.x * s, fwd.z * f + right.z * s);
+    const tmp = this._tmpMove || (this._tmpMove = new THREE.Vector3());
+    this._fillCamDir(f, s, tmp);
+    this.avatar.setMoveVector(tmp.x, tmp.z);
   }
 
-  /** E / Space: act on the closest plot if the avatar is standing by it. */
+  /** E: board/leave the boat if near it, else act on the closest plot. */
   _keyboardInteract() {
+    if (this._boating) {
+      this._leaveBoat();
+      return;
+    }
+    if (this._nearBoat()) {
+      this._boardBoat();
+      return;
+    }
     let best = null;
     let bestD = Infinity;
     for (const p of this.plots) {
@@ -276,6 +314,30 @@ export class GardenScreen {
     }
     this._setPointer(e);
     this.raycaster.setFromCamera(this.pointer, this.camera);
+
+    // while sailing: click the sea to steer the boat there
+    if (this._boating) {
+      const gh = this.raycaster.intersectObject(this.pickPlane, false);
+      if (gh.length) {
+        const p = gh[0].point;
+        const r = Math.hypot(p.x, p.z);
+        const max = 34;
+        if (r > max) {
+          p.x *= max / r;
+          p.z *= max / r;
+        }
+        this._boatTarget = new THREE.Vector3(p.x, 0, p.z);
+        this._boatDir.set(0, 0, 0);
+      }
+      return;
+    }
+
+    // board the boat by clicking it (walk over first if far)
+    if (this.boat && this.raycaster.intersectObject(this.boat.hit, false).length) {
+      if (this._nearBoat()) this._boardBoat();
+      else this.avatar.moveTo(this.boat.position);
+      return;
+    }
 
     if (this.npc && this.raycaster.intersectObject(this.npc.hit, false).length) {
       this._talkNpc();
@@ -535,7 +597,7 @@ export class GardenScreen {
   }
 
   _tryJump() {
-    if (this._swimming || this._drowning || this._isFishing()) return;
+    if (this._swimming || this._drowning || this._boating || this._isFishing()) return;
     if (this.avatar.jump()) this.app.audio?.play('jump');
   }
 
@@ -623,6 +685,91 @@ export class GardenScreen {
     this.avatar.airY = 0;
     this.avatar.stop();
     this.hud.setBreath(false);
+  }
+
+  // ---------- boat ----------
+  _nearBoat() {
+    const b = this.boat.position;
+    return Math.hypot(this.avatar.position.x - b.x, this.avatar.position.z - b.z) < 3.2;
+  }
+
+  _boardBoat() {
+    if (this._boating || !this._nearBoat()) {
+      if (!this._boating) this.hud.toast('Dekati perahu untuk naik ⛵');
+      return;
+    }
+    this._boating = true;
+    this._boatDir.set(0, 0, 0);
+    this._boatTarget = null;
+    this._cancelFishing();
+    this.avatar.stop();
+    this.avatar.speedMul = 1;
+    this.app.audio?.play('water');
+    this.hud.toast('Berlayar! ⛵ (E dekat pantai untuk turun)');
+  }
+
+  _leaveBoat() {
+    const b = this.boat.position;
+    const r = Math.hypot(b.x, b.z);
+    if (r > ISLAND.sandR + 1.5) {
+      this.hud.toast('Dekati pantai untuk turun ⛵');
+      return;
+    }
+    this._boating = false;
+    this._boatDir.set(0, 0, 0);
+    // step out onto the nearest land
+    const land = ISLAND.sandR - 2;
+    const k = r > 0.001 ? land / r : 0;
+    this.avatar.root.position.set(b.x * k, 0, b.z * k);
+    this.avatar.root.position.y = 0;
+    this.avatar.airY = 0;
+    this.avatar.vy = 0;
+    this.avatar.stop();
+    this.app.audio?.play('step');
+    this.hud.toast('Turun dari perahu 🏝️');
+  }
+
+  _updateBoat(dt) {
+    const BOAT_SPEED = 6;
+    const MAX_R = 34;
+    const boat = this.boat.group;
+    // move by keys or toward a clicked target
+    let mx = 0;
+    let mz = 0;
+    if (this._boatDir.lengthSq() > 1e-4) {
+      const len = Math.hypot(this._boatDir.x, this._boatDir.z);
+      mx = this._boatDir.x / len;
+      mz = this._boatDir.z / len;
+    } else if (this._boatTarget) {
+      const dx = this._boatTarget.x - boat.position.x;
+      const dz = this._boatTarget.z - boat.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.4) this._boatTarget = null;
+      else {
+        mx = dx / d;
+        mz = dz / d;
+      }
+    }
+    if (mx !== 0 || mz !== 0) {
+      boat.position.x += mx * BOAT_SPEED * dt;
+      boat.position.z += mz * BOAT_SPEED * dt;
+      const heading = Math.atan2(mx, mz);
+      boat.rotation.y = dampAngle(boat.rotation.y, heading, 6, dt);
+    }
+    // keep on the open sea
+    const r = Math.hypot(boat.position.x, boat.position.z);
+    if (r > MAX_R) {
+      boat.position.x *= MAX_R / r;
+      boat.position.z *= MAX_R / r;
+    }
+    boat.position.y = this.boat.baseY + Math.sin(this.app.clock.elapsedTime * 2) * 0.06;
+    boat.rotation.z = Math.sin(this.app.clock.elapsedTime * 1.6) * 0.04;
+
+    // the avatar rides the boat
+    this.avatar.root.position.set(boat.position.x, boat.position.y + 0.55, boat.position.z);
+    this.avatar.root.rotation.y = boat.rotation.y;
+    this.avatar.airY = 0;
+    this.avatar.vy = 0;
   }
 
   _spawnBobber() {
@@ -823,21 +970,42 @@ export class GardenScreen {
     }
   }
 
+  _updatePetTag() {
+    if (!this._petTag || !this.pet) return;
+    const p = this.pet.group.position;
+    const v = new THREE.Vector3(p.x, p.y + 0.95, p.z).project(this.camera);
+    if (v.z < 1) {
+      this._petTag.style.left = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
+      this._petTag.style.top = `${(-v.y * 0.5 + 0.5) * window.innerHeight}px`;
+      this._petTag.classList.remove('hidden');
+    } else {
+      this._petTag.classList.add('hidden');
+    }
+  }
+
   _updateNpc(dt) {
     if (this._npcTipCd > 0) this._npcTipCd -= dt;
     const np = this.npc.position;
     const d = Math.hypot(this.avatar.position.x - np.x, this.avatar.position.z - np.z);
-    if (d < 5) {
-      const v = new THREE.Vector3(np.x, this.npc.headY, np.z).project(this.camera);
-      if (v.z < 1) {
-        this._npcBubble.style.left = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
-        this._npcBubble.style.top = `${(-v.y * 0.5 + 0.5) * window.innerHeight}px`;
-        this._npcBubble.classList.remove('hidden');
-      } else {
-        this._npcBubble.classList.add('hidden');
-      }
+    const v = new THREE.Vector3(np.x, this.npc.headY, np.z).project(this.camera);
+    const onScreen = v.z < 1;
+    const x = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
+    const y = `${(-v.y * 0.5 + 0.5) * window.innerHeight}px`;
+    const near = d < 5;
+    // near: show the motivational bubble; otherwise just the name tag
+    if (onScreen && near) {
+      this._npcBubble.style.left = x;
+      this._npcBubble.style.top = y;
+      this._npcBubble.classList.remove('hidden');
+      this._npcTag.classList.add('hidden');
+    } else if (onScreen) {
+      this._npcTag.style.left = x;
+      this._npcTag.style.top = y;
+      this._npcTag.classList.remove('hidden');
+      this._npcBubble.classList.add('hidden');
     } else {
       this._npcBubble.classList.add('hidden');
+      this._npcTag.classList.add('hidden');
     }
   }
 
@@ -935,7 +1103,12 @@ export class GardenScreen {
   update(dt) {
     this._applyKeyboard();
     this.avatar.update(dt, this.app.audio);
-    this._updateWater(dt); // swim near shore, then sink & respawn if too far
+    if (this._boating) {
+      this._updateBoat(dt);
+    } else {
+      this._updateWater(dt); // swim near shore, then sink & respawn if too far
+      this.boat?.bob(this.app.clock.elapsedTime);
+    }
     for (const plot of this.plots) {
       if (plot.update(dt)) this._onBloom(plot);
     }
@@ -958,6 +1131,7 @@ export class GardenScreen {
     this.pet?.update(dt, this.avatar.position);
     this._updateNpc(dt);
     this._updateNameTag();
+    this._updatePetTag();
     this._updateFishing(dt);
     // rain or the auto-sprinkler keeps the garden watered (growth boost)
     const autoWet = this.weather?.isRaining ? 0.4 : mods.sprinkler > 0 ? 0.1 + 0.15 * mods.sprinkler : 0;

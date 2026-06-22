@@ -369,6 +369,14 @@ body {
 .name-tag.hidden {
   display: none;
 }
+.name-tag.pet-tag {
+  background: rgba(180, 90, 120, 0.85);
+  font-size: 12px;
+  padding: 2px 9px;
+}
+.name-tag.npc-tag {
+  background: rgba(110, 80, 160, 0.85);
+}
 .hud-top-right {
   display: flex;
   gap: 8px;

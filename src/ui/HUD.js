@@ -113,7 +113,7 @@ export class HUD {
       html:
         '<b>🖱️ Mouse:</b> klik tanah = jalan · klik petak = tanam/siram/panen<br>' +
         '<b>⌨️ Keyboard:</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>/panah = jalan · ' +
-        '<kbd>Spasi</kbd> = lompat · <kbd>E</kbd> = aksi · <kbd>F</kbd> = mancing · ' +
+        '<kbd>Spasi</kbd> = lompat · <kbd>E</kbd> = aksi / naik perahu ⛵ · <kbd>F</kbd> = mancing · ' +
         '<kbd>1</kbd>-<kbd>5</kbd> = bibit · <kbd>B</kbd> toko · <kbd>U</kbd> upgrade · ' +
         '<kbd>H</kbd> cuaca · <kbd>M</kbd> suara · <kbd>C</kbd> kostum · <kbd>Esc</kbd> jeda' +
         '<div class="credit">By Kakak Mahathir ya Haikal ^,^</div>',

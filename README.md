@@ -24,7 +24,10 @@ real `.glb` models / audio later.
   and three Pokémon (**Pikachu, Jigglypuff & Dedenne**), each with their own
   procedural body and gait. Optional name. Saved to `localStorage`.
 - **Garden fairy & pet**: a fairy NPC gives Haikal motivational messages (and the
-  odd coin), and a little chick hops along behind you.
+  odd coin), and a little chick named **Intan** hops along behind you.
+- **Sailing**: a boat is docked at the shore — press `E` next to it (or click it)
+  to set sail across the open sea, and `E` near the beach to step off. Wander too
+  far on foot and you'll swim, then drown and respawn.
 - **Levels & XP**: gardening and fishing earn XP; level up for a coin bonus and a
   little celebration. Your level + XP bar show top-left, and your name floats
   above your character.
