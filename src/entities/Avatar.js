@@ -606,9 +606,13 @@ export class Avatar {
     this.moveDir.set(0, 0, 0);
   }
 
-  /** Hop, if currently on the ground. */
+  /** Hop, if currently on the ground. Returns true if it actually jumped. */
   jump() {
-    if (this.airY <= 0.001) this.vy = 5.8;
+    if (this.airY <= 0.001) {
+      this.vy = 5.8;
+      return true;
+    }
+    return false;
   }
 
   get isAirborne() {

@@ -153,6 +153,19 @@ export function sfxDing() {
   );
 }
 
+export function sfxJump() {
+  // quick low->high "boing"
+  return encodeWav(
+    render(
+      [
+        { freq: 440, start: 0, dur: 0.07, type: 'triangle', gain: 0.32, a: 0.004, d: 0.03, s: 0.4, r: 0.04 },
+        { freq: 720, start: 0.05, dur: 0.12, type: 'triangle', gain: 0.28, a: 0.004, d: 0.05, s: 0.3, r: 0.07, vibrato: 0.05 },
+      ],
+      0.2
+    )
+  );
+}
+
 export function sfxPop() {
   return encodeWav(
     render([{ freq: 420, dur: 0.14, type: 'triangle', gain: 0.32, a: 0.004, d: 0.05, s: 0.3, r: 0.08, vibrato: 0.2 }], 0.16)

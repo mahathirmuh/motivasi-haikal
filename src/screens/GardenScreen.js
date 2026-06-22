@@ -62,6 +62,7 @@ export class GardenScreen {
     this.dayTime = 0.18; // start mid-morning
     this.sky.setDayNight(this.dayTime, this.lights);
     this.fishing = { state: 'idle', timer: 0, bobber: null, baseY: 0 };
+    this._drowning = false;
 
     // garden fairy (motivational NPC) + pet companion
     this.npc = new Npc(this.scene, new THREE.Vector3(-7, 0, -3));
@@ -117,7 +118,9 @@ export class GardenScreen {
       onBuySeed: (type) => this._buySeed(type),
       onAction: () => this._keyboardInteract(),
       onBuyUpgrade: (id) => this._buyUpgrade(id),
-      onJump: () => this.avatar.jump(),
+      onJump: () => {
+        if (this.avatar.jump()) this.app.audio?.play('jump');
+      },
       onFish: () => this._fish(),
       onReset: () => this._resetGame(),
       onWeather: () => this._cycleWeather(),
@@ -184,7 +187,9 @@ export class GardenScreen {
       if (e.repeat) return;
       this.keys.add(k);
       if (k === 'e') this._keyboardInteract();
-      else if (k === ' ') this.avatar.jump();
+      else if (k === ' ') {
+        if (this.avatar.jump()) this.app.audio?.play('jump');
+      }
       else if (k === 'f') this._fish();
       else if (k === 'h') this._cycleWeather();
       else if (k === 'escape') this._onEscape();
@@ -207,8 +212,8 @@ export class GardenScreen {
 
   /** Translate held movement keys into a camera-relative direction. */
   _applyKeyboard() {
-    if (this._isFishing()) {
-      this.avatar.setMoveVector(0, 0); // locked while fishing
+    if (this._drowning || this._isFishing()) {
+      this.avatar.setMoveVector(0, 0); // locked while fishing / drowning
       return;
     }
     const K = this.keys;
@@ -266,6 +271,7 @@ export class GardenScreen {
   }
 
   _handleClick(e) {
+    if (this._drowning) return;
     if (this._isFishing()) {
       this._cancelFishing(); // a click cancels fishing instead of moving
       return;
@@ -286,10 +292,11 @@ export class GardenScreen {
     const groundHits = this.raycaster.intersectObject(this.pickPlane, false);
     if (groundHits.length) {
       const p = groundHits[0].point;
+      const max = ISLAND.sandR + 4; // allow walking to the shore (and a bit into the sea)
       const r = Math.hypot(p.x, p.z);
-      if (r > ISLAND.walkR) {
-        p.x *= ISLAND.walkR / r;
-        p.z *= ISLAND.walkR / r;
+      if (r > max) {
+        p.x *= max / r;
+        p.z *= max / r;
       }
       this.avatar.moveTo(p);
     }
@@ -535,6 +542,41 @@ export class GardenScreen {
     this._removeBobber();
     this.fishing.state = 'idle';
     this.hud.toast('Memancing dibatalkan');
+  }
+
+  // ---------- drowning ----------
+  _updateDrown(dt) {
+    if (this._drowning) {
+      this._drownT += dt;
+      this.avatar.root.position.y = -this._drownT * 3; // sink under the sea
+      this.avatar.root.rotation.y += dt * 5;
+      if (this._drownT >= 0.95) {
+        this._drowning = false;
+        this.avatar.root.position.set(0, 0, 6); // respawn on the island
+        this.avatar.root.rotation.y = Math.PI;
+        this.avatar._faceTarget = Math.PI;
+        this.avatar.vy = 0;
+        this.avatar.airY = 0;
+        this.avatar.stop();
+      }
+      return;
+    }
+    const p = this.avatar.root.position;
+    if (Math.hypot(p.x, p.z) > ISLAND.sandR + 0.5) this._startDrown();
+  }
+
+  _startDrown() {
+    this._drowning = true;
+    this._drownT = 0;
+    this.avatar.stop();
+    this._cancelFishing();
+    this.app.audio?.play('water');
+    this.particles?.burst(
+      new THREE.Vector3(this.avatar.position.x, 0.2, this.avatar.position.z),
+      ['#bfe9ff', '#7fc7d8', '#ffffff'],
+      18
+    );
+    this.hud.toast('Byuur! 🌊 Kembali ke pulau...');
   }
 
   _spawnBobber() {
@@ -847,13 +889,7 @@ export class GardenScreen {
   update(dt) {
     this._applyKeyboard();
     this.avatar.update(dt, this.app.audio);
-    // keep the avatar on the island
-    const r = Math.hypot(this.avatar.root.position.x, this.avatar.root.position.z);
-    if (r > ISLAND.walkR) {
-      const k = ISLAND.walkR / r;
-      this.avatar.root.position.x *= k;
-      this.avatar.root.position.z *= k;
-    }
+    this._updateDrown(dt); // wander too far into the sea => sink & respawn
     for (const plot of this.plots) {
       if (plot.update(dt)) this._onBloom(plot);
     }
