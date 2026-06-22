@@ -1,8 +1,11 @@
-// A little fish that periodically leaps out of the sea near the shore in an arc.
+// Sea life: a fish that leaps near shore, a few fish gliding along the surface,
+// and a floating treasure you can sail up to.
 import * as THREE from 'three';
 import { toon } from '../gfx/toon.js';
 import { addOutline } from '../gfx/outline.js';
 import { ISLAND } from '../config/constants.js';
+
+const rand = (a, b) => a + Math.random() * (b - a);
 
 function makeFish() {
   const g = new THREE.Group();
@@ -27,8 +30,50 @@ function makeFish() {
   return g;
 }
 
+function makeTreasure() {
+  const g = new THREE.Group();
+  const part = (geo, c, t = 0.018) => {
+    const m = new THREE.Mesh(geo, toon(c));
+    m.castShadow = true;
+    addOutline(m, { thickness: t });
+    return m;
+  };
+  // floating ring buoy
+  const buoy = part(new THREE.TorusGeometry(0.7, 0.18, 10, 20), '#e23b2e');
+  buoy.rotation.x = Math.PI / 2;
+  buoy.position.y = 0.1;
+  g.add(buoy);
+  // chest
+  const chest = part(new THREE.BoxGeometry(0.7, 0.42, 0.5), '#8a5a2b');
+  chest.position.y = 0.42;
+  g.add(chest);
+  const lid = part(new THREE.BoxGeometry(0.72, 0.22, 0.52), '#a06a36');
+  lid.position.y = 0.7;
+  g.add(lid);
+  for (const yy of [0.42, 0.66]) {
+    const band = part(new THREE.BoxGeometry(0.74, 0.06, 0.54), '#ffd166', 0.01);
+    band.position.y = yy;
+    g.add(band);
+  }
+  const coin = part(new THREE.CylinderGeometry(0.12, 0.12, 0.04, 12), '#ffd166', 0.01);
+  coin.position.y = 0.95;
+  g.add(coin);
+  // tall marker so it's visible from afar
+  const pole = part(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 6), '#6b4a2b', 0.008);
+  pole.position.y = 1.7;
+  g.add(pole);
+  const flag = part(new THREE.ConeGeometry(0.16, 0.3, 4), '#ffd166', 0.008);
+  flag.rotation.z = -Math.PI / 2;
+  flag.position.set(0.18, 2.4, 0);
+  g.add(flag);
+  return g;
+}
+
 export class SeaLife {
   constructor(scene) {
+    this.elapsed = 0;
+
+    // leaping fish (near shore)
     this.fish = makeFish();
     this.fish.visible = false;
     scene.add(this.fish);
@@ -39,26 +84,61 @@ export class SeaLife {
     this.start = new THREE.Vector3();
     this.end = new THREE.Vector3();
     this.height = 2.5;
+
+    // fish gliding along the surface
+    this.swimmers = [];
+    for (let i = 0; i < 7; i++) {
+      const f = makeFish();
+      f.scale.setScalar(rand(0.4, 0.7));
+      const a = Math.random() * Math.PI * 2;
+      const cr = rand(ISLAND.sandR + 3, 30);
+      f.userData = {
+        cx: Math.cos(a) * cr,
+        cz: Math.sin(a) * cr,
+        radius: rand(3, 8),
+        angle: Math.random() * Math.PI * 2,
+        speed: rand(0.2, 0.5) * (Math.random() < 0.5 ? 1 : -1),
+        phase: Math.random() * Math.PI * 2,
+      };
+      this.swimmers.push(f);
+      scene.add(f);
+    }
+
+    // floating treasure
+    this.treasure = makeTreasure();
+    scene.add(this.treasure);
+    this.treasureBaseY = ISLAND.seaY + 0.05;
+    this.relocateTreasure();
   }
 
-  _spawn() {
+  relocateTreasure() {
     const a = Math.random() * Math.PI * 2;
-    const r = ISLAND.sandR + 4 + Math.random() * 14;
-    const cx = Math.cos(a) * r;
-    const cz = Math.sin(a) * r;
-    // a short arc roughly tangent to the shore
-    const tang = a + Math.PI / 2;
-    const len = 3 + Math.random() * 2;
-    this.start.set(cx - Math.cos(tang) * len * 0.5, ISLAND.seaY - 0.3, cz - Math.sin(tang) * len * 0.5);
-    this.end.set(cx + Math.cos(tang) * len * 0.5, ISLAND.seaY - 0.3, cz + Math.sin(tang) * len * 0.5);
-    this.height = 2.0 + Math.random() * 1.5;
-    this.dur = 1.3 + Math.random() * 0.5;
-    this.t = 0;
-    this.active = true;
-    this.fish.visible = true;
+    const r = rand(ISLAND.sandR + 6, 30);
+    this.treasure.position.set(Math.cos(a) * r, this.treasureBaseY, Math.sin(a) * r);
   }
 
   update(dt) {
+    this.elapsed += dt;
+    const t = this.elapsed;
+
+    // gliding fish
+    for (const f of this.swimmers) {
+      const u = f.userData;
+      u.angle += u.speed * dt;
+      const x = u.cx + Math.cos(u.angle) * u.radius;
+      const z = u.cz + Math.sin(u.angle) * u.radius;
+      f.position.set(x, ISLAND.seaY + 0.08 + Math.sin(t * 2 + u.phase) * 0.05, z);
+      f.rotation.y = -u.angle + (u.speed > 0 ? 0 : Math.PI) + Math.PI / 2;
+      f.rotation.z = Math.sin(t * 6 + u.phase) * 0.18;
+    }
+
+    // treasure bob
+    if (this.treasure) {
+      this.treasure.position.y = this.treasureBaseY + Math.sin(t * 1.5) * 0.08;
+      this.treasure.rotation.y += dt * 0.4;
+    }
+
+    // leaping fish
     if (!this.active) {
       this.timer -= dt;
       if (this.timer <= 0) this._spawn();
@@ -76,8 +156,23 @@ export class SeaLife {
     const z = this.start.z + (this.end.z - this.start.z) * k;
     const y = this.start.y + Math.sin(k * Math.PI) * this.height;
     this.fish.position.set(x, y, z);
-    // face travel direction, tilt up on the way up and down on the way down
     this.fish.rotation.y = Math.atan2(this.end.x - this.start.x, this.end.z - this.start.z) + Math.PI / 2;
     this.fish.rotation.z = Math.cos(k * Math.PI) * 0.9;
+  }
+
+  _spawn() {
+    const a = Math.random() * Math.PI * 2;
+    const r = ISLAND.sandR + 4 + Math.random() * 14;
+    const cx = Math.cos(a) * r;
+    const cz = Math.sin(a) * r;
+    const tang = a + Math.PI / 2;
+    const len = 3 + Math.random() * 2;
+    this.start.set(cx - Math.cos(tang) * len * 0.5, ISLAND.seaY - 0.3, cz - Math.sin(tang) * len * 0.5);
+    this.end.set(cx + Math.cos(tang) * len * 0.5, ISLAND.seaY - 0.3, cz + Math.sin(tang) * len * 0.5);
+    this.height = 2.0 + Math.random() * 1.5;
+    this.dur = 1.3 + Math.random() * 0.5;
+    this.t = 0;
+    this.active = true;
+    this.fish.visible = true;
   }
 }

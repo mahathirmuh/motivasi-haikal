@@ -729,6 +729,30 @@ export class GardenScreen {
     this.hud.toast('Turun dari perahu 🏝️');
   }
 
+  _checkTreasure() {
+    const tr = this.seaLife?.treasure;
+    if (!tr) return;
+    const dx = this.avatar.position.x - tr.position.x;
+    const dz = this.avatar.position.z - tr.position.z;
+    if (dx * dx + dz * dz < 3 * 3) {
+      const coins = 25 + Math.floor(Math.random() * 21); // 25..45
+      state.addCoins(coins);
+      this._awardXp(12);
+      this.app.audio?.play('ding');
+      this.particles?.burst(
+        new THREE.Vector3(tr.position.x, tr.position.y + 0.8, tr.position.z),
+        ['#ffd166', '#ffe48a', '#ffffff'],
+        22
+      );
+      this._floatWorld(new THREE.Vector3(tr.position.x, tr.position.y + 1.6, tr.position.z), `+${coins} 🪙`, '#8a5a1a');
+      this.hud.toast(`Harta karun! +${coins} 🪙 🧰`);
+      const done = state.missionEvent('earn', { amount: coins });
+      this._handleCompletions(done);
+      this.seaLife.relocateTreasure();
+      this._refreshHUD();
+    }
+  }
+
   _updateBoat(dt) {
     const BOAT_SPEED = 6;
     const MAX_R = 34;
@@ -1122,6 +1146,7 @@ export class GardenScreen {
     this.fireflies?.update(dt, this.app.clock.elapsedTime, this.sky.nightLevel);
     this.butterflies?.update(dt, this.app.clock.elapsedTime, 1 - this.sky.nightLevel);
     this.seaLife?.update(dt);
+    this._checkTreasure();
     this.weather?.update(dt);
     if (this.weather && this.weather.state !== this._lastWeather) {
       this._lastWeather = this.weather.state;

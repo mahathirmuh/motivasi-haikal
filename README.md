@@ -27,7 +27,9 @@ real `.glb` models / audio later.
   odd coin), and a little chick named **Intan** hops along behind you.
 - **Sailing**: a boat is docked at the shore — press `E` next to it (or click it)
   to set sail across the open sea, and `E` near the beach to step off. Wander too
-  far on foot and you'll swim, then drown and respawn.
+  far on foot and you'll swim, then drown and respawn. Out on the water, fish
+  glide along the surface and a **floating treasure** drifts about — sail up to it
+  for a coin reward (then it reappears somewhere new).
 - **Levels & XP**: gardening and fishing earn XP; level up for a coin bonus and a
   little celebration. Your level + XP bar show top-left, and your name floats
   above your character.
