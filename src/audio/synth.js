@@ -192,38 +192,58 @@ export function ambianceLoop() {
 }
 
 // ---------------- Music ----------------
-// A gentle looping pentatonic arpeggio over a soft pad. ~8s, loops seamlessly.
+// A warm I–V–vi–IV tune in C major: soft pad + bass + a lead melody. ~16s loop.
+
+const NOTE_SEMI = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
+function noteFreq(name) {
+  const m = /^([A-G]#?)(\d)$/.exec(name);
+  const midi = NOTE_SEMI[m[1]] + (parseInt(m[2], 10) + 1) * 12;
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
 
 export function musicLoop() {
   const beat = 0.5;
-  const bars = 4;
-  const total = beat * 8 * bars * 0.5; // 8s-ish
-  // A major pentatonic-ish: A3 C#4 E4 F#4 A4
-  const scale = [220.0, 277.18, 329.63, 369.99, 440.0, 554.37];
+  const bar = beat * 4;
+  const bars = 8;
+  const total = bar * bars;
+  const F = noteFreq;
+  const chords = [
+    ['C4', 'E4', 'G4'], ['G3', 'B3', 'D4'], ['A3', 'C4', 'E4'], ['F3', 'A3', 'C4'],
+    ['C4', 'E4', 'G4'], ['G3', 'B3', 'D4'], ['A3', 'C4', 'E4'], ['F3', 'A3', 'C4'],
+  ];
+  const bass = ['C3', 'G2', 'A2', 'F2', 'C3', 'G2', 'A2', 'F2'];
   const notes = [];
-  // pad chords (root + fifth) sustained per bar
-  const roots = [220.0, 246.94, 196.0, 261.63]; // A G... gentle wander
   for (let b = 0; b < bars; b++) {
-    const start = b * (total / bars);
-    notes.push({ freq: roots[b], start, dur: total / bars, type: 'triangle', gain: 0.06, a: 0.4, d: 0.4, s: 0.6, r: 0.6 });
-    notes.push({ freq: roots[b] * 1.5, start, dur: total / bars, type: 'sine', gain: 0.04, a: 0.5, d: 0.4, s: 0.6, r: 0.6 });
+    const start = b * bar;
+    for (const c of chords[b]) {
+      notes.push({ freq: F(c), start, dur: bar, type: 'triangle', gain: 0.045, a: 0.5, d: 0.3, s: 0.7, r: 0.5 });
+    }
+    notes.push({ freq: F(bass[b]), start, dur: bar * 0.5, type: 'sine', gain: 0.13, a: 0.01, d: 0.2, s: 0.5, r: 0.2 });
+    notes.push({ freq: F(bass[b]), start: start + bar * 0.5, dur: bar * 0.5, type: 'sine', gain: 0.11, a: 0.01, d: 0.2, s: 0.5, r: 0.2 });
   }
-  // sparkly arpeggio
-  const stepCount = 16 * bars;
-  const stepDur = total / stepCount;
-  for (let i = 0; i < stepCount; i++) {
-    if (i % 2 === 1 && Math.random() < 0.4) continue; // leave space, gentle
-    notes.push({
-      freq: scale[(i * 2 + Math.floor(i / 4)) % scale.length] * (i % 12 < 6 ? 1 : 2),
-      start: i * stepDur,
-      dur: stepDur * 1.6,
-      type: 'sine',
-      gain: 0.07,
-      a: 0.01,
-      d: 0.1,
-      s: 0.25,
-      r: 0.25,
-    });
+  // lead melody as [note, beats]
+  const mel = [
+    ['E4', 1], ['G4', 1], ['C5', 1], ['G4', 1],
+    ['D4', 1], ['G4', 1], ['B4', 2],
+    ['C5', 1], ['A4', 1], ['E4', 2],
+    ['F4', 1], ['A4', 1], ['C5', 2],
+    ['G4', 1], ['E4', 1], ['C4', 1], ['E4', 1],
+    ['D4', 2], ['G4', 2],
+    ['E4', 1], ['A4', 1], ['C5', 1], ['B4', 1],
+    ['A4', 1], ['G4', 1], ['E4', 2],
+  ];
+  let t = 0;
+  for (const [nm, d] of mel) {
+    const dur = d * beat;
+    notes.push({ freq: F(nm), start: t, dur: dur * 0.92, type: 'sine', gain: 0.12, a: 0.01, d: 0.12, s: 0.3, r: 0.18, vibrato: 0.004 });
+    t += dur;
   }
-  return encodeWav(render(notes, total));
+  const buf = render(notes, total);
+  const fade = Math.floor(0.012 * SR);
+  for (let i = 0; i < fade; i++) {
+    const g = i / fade;
+    buf[i] *= g;
+    buf[buf.length - 1 - i] *= g;
+  }
+  return encodeWav(buf);
 }

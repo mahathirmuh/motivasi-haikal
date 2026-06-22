@@ -33,6 +33,20 @@ export class IntroScreen {
     this.fallbackTitle = false;
     await this._buildTitle();
     this._buildUI();
+
+    // Browsers block audio before a user gesture, so start music + sea ambiance
+    // on the first interaction anywhere on the intro (click/tap/key).
+    this._audioStarted = false;
+    this._startAudioOnce = () => {
+      if (this._audioStarted) return;
+      this._audioStarted = true;
+      this.app.audio?.init();
+      this.app.audio?.startMusic();
+      this.app.audio?.startAmbiance();
+      this._soundHint?.remove();
+    };
+    window.addEventListener('pointerdown', this._startAudioOnce);
+    window.addEventListener('keydown', this._startAudioOnce);
   }
 
   async _buildTitle() {
@@ -83,16 +97,18 @@ export class IntroScreen {
       kids.push(el('div', { class: 'intro-title-fallback', html: 'FLOWER<br>GARDEN' }));
     }
     const begin = el('button', { class: 'btn btn--primary', onClick: () => this._begin() }, 'BEGIN');
+    this._soundHint = el('div', { class: 'intro-hint', text: '🔊 klik di mana saja untuk musik' });
     const bottom = el('div', { class: 'intro-bottom' }, [
       el('div', { class: 'intro-hint', text: '🌊  by the Sea  ·  berkebun di tepi laut' }),
       begin,
+      this._soundHint,
       el('div', { class: 'intro-credit', text: 'By Kakak Mahathir ya Haikal ^,^' }),
     ]);
     mountUI(el('div', { class: 'screen' }, [...kids, bottom]));
   }
 
   _begin() {
-    this.app.audio?.init();
+    this._startAudioOnce?.();
     this.app.audio?.play('click');
     this.app.sm.go('character-select');
   }
@@ -116,6 +132,8 @@ export class IntroScreen {
   }
 
   exit() {
-    this.app.audio?.play?.('click');
+    window.removeEventListener('pointerdown', this._startAudioOnce);
+    window.removeEventListener('keydown', this._startAudioOnce);
+    // music + ambiance keep playing across screens
   }
 }

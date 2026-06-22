@@ -27,7 +27,7 @@ export class AudioManager {
       ding: mk(sfxDing(), 0.5),
       pop: mk(sfxPop(), 0.5),
     };
-    this.music = new Howl({ src: [musicLoop()], format: ['wav'], loop: true, volume: 0.28 });
+    this.music = new Howl({ src: [musicLoop()], format: ['wav'], loop: true, volume: 0.34 });
     this.ambiance = new Howl({ src: [ambianceLoop()], format: ['wav'], loop: true, volume: 0.7 });
     this.ready = true;
     Howler.mute(!!state.data.muted);
