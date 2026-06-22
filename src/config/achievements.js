@@ -7,5 +7,5 @@ export const ACHIEVEMENTS = [
   { id: 'farmer', name: 'Petani Rajin', icon: '👩‍🌾', metric: 'harvest', goal: 25, desc: 'Panen 25 bunga' },
   { id: 'rich', name: 'Saudagar', icon: '💰', metric: 'coins', goal: 200, desc: 'Kumpulkan 200 koin (total)' },
   { id: 'botanist', name: 'Ahli Botani', icon: '🌼', metric: 'variety', goal: 4, desc: 'Tanam 4 jenis berbeda' },
-  { id: 'collector', name: 'Kolektor', icon: '🏵️', metric: 'discovered', goal: 4, desc: 'Temukan semua 4 bunga' },
+  { id: 'collector', name: 'Kolektor', icon: '🏵️', metric: 'discovered', goal: 5, desc: 'Temukan semua 5 bunga' },
 ];

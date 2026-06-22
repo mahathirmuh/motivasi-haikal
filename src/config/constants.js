@@ -73,7 +73,15 @@ export const HARVEST_COINS = 12;
 export const HARVEST_SEED_REWARD = 1; // bonus seeds returned on harvest
 
 // Seed shop prices (coins per seed).
-export const SHOP_PRICES = { rose: 8, tulip: 10, sunflower: 12, lily: 18 };
+export const SHOP_PRICES = { rose: 8, tulip: 10, sunflower: 12, lily: 18, orchid: 26 };
+
+// Garden expansion: plots 0..STARTING_PLOTS-1 start unlocked; the rest are
+// bought in order. Cost grows per unlock.
+export const STARTING_PLOTS = 8;
+export const PLOT_UNLOCK = { base: 20, step: 15 };
+export function plotUnlockCost(index) {
+  return PLOT_UNLOCK.base + Math.max(0, index - STARTING_PLOTS) * PLOT_UNLOCK.step;
+}
 
 // Dynamic missions: how many are active at once.
 export const MISSION_COUNT = 4;

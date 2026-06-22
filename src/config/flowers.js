@@ -1,5 +1,5 @@
-// Flower species. Each has colors + a `shape` recipe used by entities/Flower.js
-// to build the bloom procedurally (no models needed).
+// Flower species. Each has colors, a `shape` recipe (entities/Flower.js builds
+// the bloom from it), and a coin `value` paid on harvest (before upgrades).
 
 export const FLOWERS = {
   rose: {
@@ -11,6 +11,7 @@ export const FLOWERS = {
     petalInner: '#ff96ad',
     center: '#b23a52',
     stem: '#4f8f2c',
+    value: 12,
   },
   tulip: {
     id: 'tulip',
@@ -21,6 +22,7 @@ export const FLOWERS = {
     petalInner: '#ffd1ec',
     center: '#e0609f',
     stem: '#4f8f2c',
+    value: 12,
   },
   sunflower: {
     id: 'sunflower',
@@ -31,6 +33,7 @@ export const FLOWERS = {
     petalInner: '#ffe48a',
     center: '#7a4a22',
     stem: '#4f8f2c',
+    value: 14,
   },
   lily: {
     id: 'lily',
@@ -41,6 +44,18 @@ export const FLOWERS = {
     petalInner: '#ffe2f0',
     center: '#ffcf5a',
     stem: '#4f8f2c',
+    value: 16,
+  },
+  orchid: {
+    id: 'orchid',
+    name: 'Anggrek',
+    icon: '🪻',
+    shape: 'orchid',
+    petal: '#c77dff',
+    petalInner: '#e9c6ff',
+    center: '#ffd166',
+    stem: '#4f8f2c',
+    value: 24, // rare / premium
   },
 };
 

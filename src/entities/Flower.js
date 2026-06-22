@@ -125,6 +125,29 @@ export class Flower {
         tip.position.set(Math.cos(a) * 0.06, headY + 0.16, Math.sin(a) * 0.06);
         this.top.add(st, tip);
       }
+    } else if (this.type.shape === 'orchid') {
+      // orchid — wide splayed tepals + a contrasting lip + small column
+      const headO = headY + 0.08;
+      const col = mesh(new THREE.SphereGeometry(0.05, 8, 8), this.type.center, { thickness: 0.01 });
+      col.position.y = headO;
+      this.top.add(col);
+      const n = 5;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + 0.3;
+        const petal = mesh(new THREE.SphereGeometry(0.14, 10, 8), i % 2 ? this.type.petalInner : this.type.petal, {
+          thickness: 0.012,
+        });
+        petal.scale.set(1, 0.25, 0.7);
+        petal.position.set(Math.cos(a) * 0.16, headO + 0.02, Math.sin(a) * 0.16);
+        petal.lookAt(Math.cos(a) * 0.6, headO + 0.02, Math.sin(a) * 0.6);
+        this.top.add(petal);
+      }
+      // lip (lower, larger, inner color)
+      const lip = mesh(new THREE.SphereGeometry(0.13, 10, 8), this.type.petalInner, { thickness: 0.012 });
+      lip.scale.set(0.8, 0.3, 1);
+      lip.position.set(0, headO - 0.12, 0.12);
+      lip.rotation.x = 0.6;
+      this.top.add(lip);
     } else {
       // rose — layered cluster
       const layers = [

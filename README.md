@@ -30,7 +30,8 @@ real `.glb` models / audio later.
 - **Gameplay**: third-person follow + orbit camera, **point-and-click + keyboard
   movement**, a grid of plots, timed growth (`seed → sprout → bloom`),
   **plant / water (speeds growth) / harvest (coins + bonus seeds)**, a seed
-  inventory of 4 flower types (mawar, tulip, bunga matahari, **lily**), coins,
+  inventory of 5 flower types (mawar, tulip, bunga matahari, lily, and the rare
+  **anggrek/orchid**) — each worth different coins on harvest — coins,
   a **seed shop** (spend coins to buy seeds), **harvest particle bursts +
   floating coin numbers**, a **bloom sparkle** when a flower opens, and a
   **dynamic mission checklist** that rotates: each finished mission is replaced
@@ -40,8 +41,9 @@ real `.glb` models / audio later.
   occasional **rain** (which auto-waters the garden) clearing into a **rainbow**.
 - **Flower album + achievements**: a collection panel tracking discovered/
   harvested flowers, and unlockable achievements with progress.
-- **Upgrades**: spend coins on permanent upgrades — faster growth (Pupuk),
-  bigger harvest payouts (Panen Emas), and an auto-watering sprinkler.
+- **Upgrades & expansion**: spend coins on permanent upgrades — faster growth
+  (Pupuk), bigger harvest payouts (Panen Emas), and an auto-watering sprinkler —
+  and **unlock more plots** (locked tiles you buy in order to grow your garden).
 - **Touch controls**: on touch devices an on-screen joystick + action button
   appear automatically, so it's fully playable on a phone.
 - **Audio (Howler.js)**: a calming ocean + wind ambiance loop, gentle music, and
@@ -80,7 +82,7 @@ Requires Node 18+.
 |-----|--------|
 | `W` `A` `S` `D` / Arrow keys | Move the character (camera-relative) |
 | `E` or `Space` | Act on the nearest plot (plant / water / harvest) |
-| `1` `2` `3` `4` | Select seed (Mawar / Tulip / Matahari / Lily) |
+| `1` `2` `3` `4` `5` | Select seed (Mawar / Tulip / Matahari / Lily / Anggrek) |
 | `B` | Open the seed shop |
 | `G` | Open the flower album |
 | `T` | Open achievements |

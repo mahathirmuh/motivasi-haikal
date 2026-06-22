@@ -1,5 +1,5 @@
 // Game state singleton — profile + progress, persisted to localStorage.
-import { SAVE_KEY, MISSION_COUNT } from '../config/constants.js';
+import { SAVE_KEY, MISSION_COUNT, STARTING_PLOTS } from '../config/constants.js';
 import { DEFAULT_PROFILE } from '../config/characters.js';
 import { generateMissions, generateMission } from '../config/missions.js';
 
@@ -7,11 +7,12 @@ function freshState() {
   return {
     profile: { ...DEFAULT_PROFILE },
     coins: 0,
-    seeds: { rose: 5, tulip: 3, sunflower: 3, lily: 2 },
-    bouquet: { rose: 0, tulip: 0, sunflower: 0, lily: 0 },
+    seeds: { rose: 5, tulip: 3, sunflower: 3, lily: 2, orchid: 0 },
+    bouquet: { rose: 0, tulip: 0, sunflower: 0, lily: 0, orchid: 0 },
     selectedSeed: 'rose',
     muted: false,
     upgrades: { growth: 0, coin: 0, sprinkler: 0 },
+    unlockedPlots: STARTING_PLOTS,
     // stats
     plantsPlanted: 0,
     harvests: 0,
@@ -43,6 +44,10 @@ class GameState {
         if (!Array.isArray(parsed.missions) || parsed.missions.length === 0) {
           this.data.missions = generateMissions(MISSION_COUNT);
         }
+        // migrate: never lock a plot that already has a saved flower
+        const plotKeys = Object.keys(this.data.plots || {}).map(Number);
+        const maxPlot = plotKeys.length ? Math.max(...plotKeys) : -1;
+        this.data.unlockedPlots = Math.max(this.data.unlockedPlots || STARTING_PLOTS, maxPlot + 1);
       }
     } catch (err) {
       console.warn('[state] failed to load save, starting fresh:', err);

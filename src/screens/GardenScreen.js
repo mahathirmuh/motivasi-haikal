@@ -14,7 +14,7 @@ import { Plot } from '../entities/Plot.js';
 import { HUD } from '../ui/HUD.js';
 import { Particles } from '../gfx/Particles.js';
 import { state } from '../core/state.js';
-import { GRID, ISLAND, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH, SHOP_PRICES } from '../config/constants.js';
+import { GRID, ISLAND, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH, SHOP_PRICES, plotUnlockCost } from '../config/constants.js';
 import { getFlower, FLOWER_IDS } from '../config/flowers.js';
 import { ACHIEVEMENTS } from '../config/achievements.js';
 import { getUpgrade, upgradeCost } from '../config/upgrades.js';
@@ -120,9 +120,9 @@ export class GardenScreen {
       for (let c = 0; c < GRID.cols; c++) {
         const x = startX + c * GRID.tile;
         const z = startZ + r * GRID.tile;
-        const plot = new Plot(index, x, z);
+        const plot = new Plot(index, x, z, index >= state.data.unlockedPlots);
         const saved = state.data.plots?.[index];
-        if (saved && saved.type) plot.plant(saved.type, saved);
+        if (!plot.locked && saved && saved.type) plot.plant(saved.type, saved);
         this.scene.add(plot.group);
         this.plots.push(plot);
         this.plotMeshes.push(plot.soil);
@@ -162,6 +162,7 @@ export class GardenScreen {
       else if (k === '2') this._selectSeed('tulip');
       else if (k === '3') this._selectSeed('sunflower');
       else if (k === '4') this._selectSeed('lily');
+      else if (k === '5') this._selectSeed('orchid');
       else if (k === 'b') this.hud.toggleShop();
       else if (k === 'g') this.hud.toggleAlbum();
       else if (k === 't') this.hud.toggleAch();
@@ -316,6 +317,10 @@ export class GardenScreen {
   }
 
   _onPlotClicked(plot) {
+    if (plot.locked) {
+      this._tryUnlock(plot);
+      return;
+    }
     if (plot.isEmpty()) {
       const type = state.data.selectedSeed;
       if ((state.data.seeds[type] || 0) <= 0) {
@@ -328,8 +333,32 @@ export class GardenScreen {
     this.avatar.moveTo(stand, () => this._actOnPlot(plot));
   }
 
+  _tryUnlock(plot) {
+    const next = state.data.unlockedPlots;
+    if (plot.index !== next) {
+      this.hud.toast('Buka petak terdekat dulu 🔒');
+      this.app.audio?.play('click');
+      return;
+    }
+    const cost = plotUnlockCost(plot.index);
+    if (state.data.coins < cost) {
+      this.hud.toast(`Perlu ${cost} 🪙 untuk buka petak`);
+      this.app.audio?.play('click');
+      return;
+    }
+    state.data.coins -= cost;
+    state.data.unlockedPlots += 1;
+    state.save();
+    plot.setLocked(false);
+    this.app.audio?.play('ding');
+    this._fxAtPlot(plot, null, 'plant');
+    this.hud.toast(`Petak baru terbuka! −${cost} 🪙`);
+    this._refreshHUD();
+  }
+
   _actOnPlot(plot) {
-    if (plot.isEmpty()) this._plant(plot);
+    if (plot.locked) this._tryUnlock(plot);
+    else if (plot.isEmpty()) this._plant(plot);
     else if (plot.isBloomed()) this._harvest(plot);
     else this._water(plot);
   }
@@ -366,7 +395,8 @@ export class GardenScreen {
     const flower = plot.flower?.type;
     const type = plot.harvest();
     if (!type) return;
-    const coins = Math.round(HARVEST_COINS * (mods.coinMul || 1));
+    const base = flower?.value || HARVEST_COINS;
+    const coins = Math.round(base * (mods.coinMul || 1));
     state.addSeeds(type, HARVEST_SEED_REWARD);
     state.addCoins(coins);
     state.recordHarvest(type);
