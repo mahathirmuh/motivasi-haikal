@@ -207,6 +207,10 @@ export class GardenScreen {
 
   /** Translate held movement keys into a camera-relative direction. */
   _applyKeyboard() {
+    if (this._isFishing()) {
+      this.avatar.setMoveVector(0, 0); // locked while fishing
+      return;
+    }
     const K = this.keys;
     let f = 0;
     let s = 0;
@@ -262,6 +266,10 @@ export class GardenScreen {
   }
 
   _handleClick(e) {
+    if (this._isFishing()) {
+      this._cancelFishing(); // a click cancels fishing instead of moving
+      return;
+    }
     this._setPointer(e);
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
@@ -509,11 +517,24 @@ export class GardenScreen {
       this.app.audio?.play('click');
       return;
     }
+    this.avatar.stop(); // lock in place while fishing
     this._spawnBobber();
     f.state = 'casting';
     f.timer = 2.5 + Math.random() * 3;
     this.app.audio?.play('water');
-    this.hud.toast('Memancing... tunggu ikan 🎣');
+    this.hud.toast('Memancing... tunggu ikan 🎣  (klik/Esc untuk batal)');
+  }
+
+  _isFishing() {
+    return this.fishing && this.fishing.state !== 'idle';
+  }
+
+  _cancelFishing() {
+    if (!this._isFishing()) return;
+    this.app.audio?.play('click');
+    this._removeBobber();
+    this.fishing.state = 'idle';
+    this.hud.toast('Memancing dibatalkan');
   }
 
   _spawnBobber() {
@@ -539,8 +560,8 @@ export class GardenScreen {
     this.avatar._faceTarget = Math.atan2(bx - this.avatar.position.x, bz - this.avatar.position.z);
 
     // fishing rod (held by the avatar) + line to the bobber
-    this.fishRod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.032, 1.7, 6), toon('#8a5a2b'));
-    addOutline(this.fishRod, { thickness: 0.012 });
+    this.fishRod = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.055, 1.9, 6), toon('#8a5a2b'));
+    addOutline(this.fishRod, { thickness: 0.02 });
     this.scene.add(this.fishRod);
     this.fishLine = new THREE.Mesh(
       new THREE.CylinderGeometry(0.012, 0.012, 1, 5),
@@ -566,10 +587,15 @@ export class GardenScreen {
     const horiz = new THREE.Vector3(bob.x - ax, 0, bob.z - az);
     if (horiz.lengthSq() < 1e-4) horiz.set(0, 0, 1);
     horiz.normalize();
-    // rod held in front of the avatar, leaning up and out toward the sea
-    const hand = new THREE.Vector3(ax + horiz.x * 0.28, ay + 1.05, az + horiz.z * 0.28);
-    const rodDir = new THREE.Vector3(horiz.x * 0.62, 1.0, horiz.z * 0.62).normalize();
-    const rodLen = 1.7;
+    const side = new THREE.Vector3(horiz.z, 0, -horiz.x); // avatar's right
+    // rod held up and out to the side so it reads clearly from behind
+    const hand = new THREE.Vector3(ax + side.x * 0.28 + horiz.x * 0.1, ay + 1.0, az + side.z * 0.28 + horiz.z * 0.1);
+    const rodDir = new THREE.Vector3(
+      side.x * 0.5 + horiz.x * 0.2,
+      1.0,
+      side.z * 0.5 + horiz.z * 0.2
+    ).normalize();
+    const rodLen = 1.9;
     if (this.fishRod) {
       this.fishRod.position.copy(hand).addScaledVector(rodDir, rodLen * 0.5);
       this.fishRod.quaternion.setFromUnitVectors(
@@ -662,6 +688,10 @@ export class GardenScreen {
 
   // ---------- pause / esc ----------
   _onEscape() {
+    if (this._isFishing()) {
+      this._cancelFishing();
+      return;
+    }
     if (this.hud.anyPanelOpen()) this.hud.closeAllPanels();
     else this.hud.togglePause();
   }
