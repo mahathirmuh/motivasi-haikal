@@ -534,9 +534,63 @@ export class GardenScreen {
     b.position.set(bx, this.fishing.baseY, bz);
     this.scene.add(b);
     this.fishing.bobber = b;
+
+    // face the sea while fishing
+    this.avatar._faceTarget = Math.atan2(bx - this.avatar.position.x, bz - this.avatar.position.z);
+
+    // fishing rod (held by the avatar) + line to the bobber
+    this.fishRod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.032, 1.7, 6), toon('#8a5a2b'));
+    addOutline(this.fishRod, { thickness: 0.012 });
+    this.scene.add(this.fishRod);
+    this.fishLine = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 1, 5),
+      new THREE.MeshBasicMaterial({ color: 0x2e2620 })
+    );
+    this.scene.add(this.fishLine);
+  }
+
+  _orientCyl(mesh, a, b) {
+    const dir = new THREE.Vector3().subVectors(b, a);
+    const len = dir.length() || 0.001;
+    mesh.position.copy(a).addScaledVector(dir, 0.5);
+    mesh.scale.set(1, len, 1);
+    mesh.quaternion.setFromUnitVectors(this._UP || (this._UP = new THREE.Vector3(0, 1, 0)), dir.normalize());
+  }
+
+  _updateFishGear() {
+    if (!this.fishing.bobber) return;
+    const ax = this.avatar.position.x;
+    const az = this.avatar.position.z;
+    const ay = this.avatar.position.y; // accounts for jumping
+    const bob = this.fishing.bobber.position;
+    const horiz = new THREE.Vector3(bob.x - ax, 0, bob.z - az);
+    if (horiz.lengthSq() < 1e-4) horiz.set(0, 0, 1);
+    horiz.normalize();
+    // rod held in front of the avatar, leaning up and out toward the sea
+    const hand = new THREE.Vector3(ax + horiz.x * 0.28, ay + 1.05, az + horiz.z * 0.28);
+    const rodDir = new THREE.Vector3(horiz.x * 0.62, 1.0, horiz.z * 0.62).normalize();
+    const rodLen = 1.7;
+    if (this.fishRod) {
+      this.fishRod.position.copy(hand).addScaledVector(rodDir, rodLen * 0.5);
+      this.fishRod.quaternion.setFromUnitVectors(
+        this._UP || (this._UP = new THREE.Vector3(0, 1, 0)),
+        rodDir
+      );
+    }
+    const tip = new THREE.Vector3().copy(hand).addScaledVector(rodDir, rodLen);
+    if (this.fishLine) this._orientCyl(this.fishLine, tip, bob);
   }
 
   _removeBobber() {
+    for (const key of ['fishLine', 'fishRod']) {
+      const m = this[key];
+      if (m) {
+        this.scene.remove(m);
+        m.geometry.dispose();
+        m.material.dispose();
+        this[key] = null;
+      }
+    }
     const b = this.fishing.bobber;
     if (!b) return;
     this.scene.remove(b);
@@ -556,6 +610,7 @@ export class GardenScreen {
     if (f.bobber) {
       const dip = f.state === 'bite' ? 0.18 : 0;
       f.bobber.position.y = f.baseY + Math.sin(t * 3) * (f.state === 'bite' ? 0.05 : 0.12) - dip;
+      this._updateFishGear();
     }
     if (f.state === 'casting') {
       f.timer -= dt;
@@ -591,7 +646,7 @@ export class GardenScreen {
       state.addSeeds(tt, 1);
       this.hud.toast(`Bonus bibit ${getFlower(tt).name}! 🌱`);
     }
-    const done = state.missionEvent('earn', { amount: coins });
+    const done = [...state.missionEvent('fish'), ...state.missionEvent('earn', { amount: coins })];
     this._handleCompletions(done);
     this._removeBobber();
     f.state = 'idle';

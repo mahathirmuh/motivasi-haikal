@@ -128,6 +128,7 @@ class GameState {
       else if (kind === 'plant' && m.type === 'plantType' && m.flower === payload.type) inc = 1;
       else if (kind === 'harvest' && m.type === 'harvest') inc = 1;
       else if (kind === 'water' && m.type === 'water') inc = 1;
+      else if (kind === 'fish' && m.type === 'fish') inc = 1;
       else if (kind === 'earn' && m.type === 'earn') inc = payload.amount || 0;
       if (inc > 0) {
         m.progress = Math.min(m.target, m.progress + inc);

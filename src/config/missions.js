@@ -32,6 +32,10 @@ const RECIPES = [
     const n = ri(3, 8) * 10;
     return { type: 'earn', target: n, text: `Kumpulkan ${n} koin`, reward: Math.round(n / 4) };
   },
+  () => {
+    const n = ri(2, 5);
+    return { type: 'fish', target: n, text: `Pancing ${n} ikan`, reward: 9 };
+  },
 ];
 
 export function generateMission(existingTexts = []) {
