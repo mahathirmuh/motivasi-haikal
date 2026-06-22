@@ -20,9 +20,9 @@ real `.glb` models / audio later.
   select → loading → seaside garden.
 - **Character customization**: gender toggle (perempuan / laki-laki / netral)
   that changes the body, plus appearance presets with arrow switching and a
-  rotating 3D preview — four humanoids **and two creatures (Dinosaur & Godzilla)**
-  with their own procedural bodies, tails, spikes and gait. Optional name. Saved
-  to `localStorage`.
+  rotating 3D preview — four humanoids, two creatures (**Dinosaur & Godzilla**),
+  and two Pokémon (**Pikachu & Jigglypuff**), each with their own procedural body
+  and gait. Optional name. Saved to `localStorage`.
 - **Seaside world**: a lightweight **toon ocean** (vertex-displaced waves +
   animated shoreline foam), a grass plateau ringed by sand and a low cliff,
   palm trees, rocks, drifting clouds, seagulls, and a full **day/night cycle**

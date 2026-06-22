@@ -107,6 +107,8 @@ export class Avatar {
       this._buildCreature(gender, preset, { scale: 1.0, spikeSize: 0.13, spikeCount: 6, headScale: 1.0, teeth: false });
     } else if (preset.kind === 'godzilla') {
       this._buildCreature(gender, preset, { scale: 1.28, spikeSize: 0.28, spikeCount: 8, headScale: 1.18, teeth: true });
+    } else if (preset.kind === 'pokemon') {
+      this._buildPokemon(gender, preset);
     } else {
       this._buildHumanoid(gender, preset);
     }
@@ -389,6 +391,156 @@ export class Avatar {
       });
       sp.position.set(0, (0.5 + Math.sin(f * Math.PI) * 0.38) * S, (0.08 - f * 0.6) * S);
       upper.add(sp);
+    }
+  }
+
+  _buildPokemon(gender, preset) {
+    const S = gender.body.height * 0.95;
+    const mon = preset.mon;
+    const body = preset.body;
+    const accent = preset.accent;
+    const tip = preset.tip || '#3a2f25';
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x201a16 });
+    const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+    const legLen = 0.28 * S;
+    this.baseUpperY = legLen;
+
+    const makeLeg = (side) => {
+      const g = new THREE.Group();
+      g.position.set(side * 0.22 * S, legLen, 0);
+      const foot = part(new THREE.SphereGeometry(0.16 * S, 10, 8), body);
+      foot.scale.set(1, 0.7, 1.3);
+      foot.position.y = -legLen * 0.7;
+      g.add(foot);
+      this.root.add(g);
+      return g;
+    };
+    this.parts.legL = makeLeg(-1);
+    this.parts.legR = makeLeg(1);
+
+    const upper = new THREE.Group();
+    upper.position.y = legLen;
+    this.root.add(upper);
+    this.parts.upper = upper;
+
+    const torso = part(new THREE.SphereGeometry(0.45 * S, 16, 14), body);
+    torso.scale.set(1, 1.05, 0.95);
+    torso.position.y = 0.4 * S;
+    torso.receiveShadow = true;
+    upper.add(torso);
+
+    const makeArm = (side) => {
+      const g = new THREE.Group();
+      g.position.set(side * 0.42 * S, 0.45 * S, 0.05 * S);
+      const arm = part(new THREE.SphereGeometry(0.12 * S, 8, 8), body);
+      arm.scale.set(0.8, 1.2, 0.8);
+      arm.position.y = -0.1 * S;
+      g.add(arm);
+      upper.add(g);
+      return g;
+    };
+    this.parts.armL = makeArm(-1);
+    this.parts.armR = makeArm(1);
+
+    const headG = new THREE.Group();
+    headG.position.y = mon === 'pika' ? 0.8 * S : 0.7 * S;
+    upper.add(headG);
+    this.parts.headG = headG;
+
+    const headR = (mon === 'pika' ? 0.42 : 0.5) * S;
+    const head = part(new THREE.SphereGeometry(headR, 18, 16), body);
+    head.castShadow = true;
+    headG.add(head);
+
+    const mkEye = (side) => {
+      if (mon === 'jiggly') {
+        const white = new THREE.Mesh(new THREE.SphereGeometry(headR * 0.26, 14, 14), whiteMat);
+        white.position.set(side * headR * 0.4, headR * 0.12, headR * 0.78);
+        white.scale.z = 0.5;
+        headG.add(white);
+        const iris = new THREE.Mesh(new THREE.SphereGeometry(headR * 0.17, 14, 14), new THREE.MeshBasicMaterial({ color: accent }));
+        iris.position.set(side * headR * 0.42, headR * 0.08, headR * 0.86);
+        iris.scale.z = 0.4;
+        headG.add(iris);
+        const pup = new THREE.Mesh(new THREE.SphereGeometry(headR * 0.08, 10, 10), eyeMat);
+        pup.position.set(side * headR * 0.42, headR * 0.06, headR * 0.92);
+        pup.scale.z = 0.4;
+        headG.add(pup);
+        const sh = new THREE.Mesh(new THREE.SphereGeometry(headR * 0.05, 8, 8), whiteMat);
+        sh.position.set(side * headR * 0.48, headR * 0.18, headR * 0.95);
+        headG.add(sh);
+      } else {
+        const e = new THREE.Mesh(new THREE.SphereGeometry(headR * 0.13, 12, 12), eyeMat);
+        e.position.set(side * headR * 0.4, headR * 0.18, headR * 0.84);
+        e.scale.z = 0.5;
+        headG.add(e);
+        const sh = new THREE.Mesh(new THREE.SphereGeometry(headR * 0.05, 8, 8), whiteMat);
+        sh.position.set(side * headR * 0.36, headR * 0.26, headR * 0.9);
+        headG.add(sh);
+      }
+    };
+    mkEye(-1);
+    mkEye(1);
+
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(headR * 0.05, 8, 8), eyeMat);
+    nose.position.set(0, -headR * 0.02, headR * 0.96);
+    headG.add(nose);
+
+    if (mon === 'pika') {
+      for (const side of [-1, 1]) {
+        const ear = part(new THREE.ConeGeometry(0.1 * S, 0.5 * S, 6), body, { thickness: 0.015 });
+        ear.position.set(side * headR * 0.5, headR * 0.95, -headR * 0.1);
+        ear.rotation.z = side * -0.4;
+        headG.add(ear);
+        const tipM = part(new THREE.ConeGeometry(0.1 * S, 0.18 * S, 6), tip, { outline: false });
+        tipM.position.set(side * headR * 0.5 + side * 0.08 * S, headR * 0.95 + 0.21 * S, -headR * 0.1);
+        tipM.rotation.z = side * -0.4;
+        headG.add(tipM);
+        const cheek = new THREE.Mesh(new THREE.CircleGeometry(headR * 0.18, 14), new THREE.MeshBasicMaterial({ color: accent }));
+        cheek.position.set(side * headR * 0.62, -headR * 0.18, headR * 0.78);
+        headG.add(cheek);
+      }
+      for (let i = 0; i < 2; i++) {
+        const st = part(new THREE.BoxGeometry(0.5 * S, 0.06 * S, 0.12 * S), tip, { outline: false });
+        st.position.set(0, 0.55 * S - i * 0.16 * S, -0.42 * S);
+        upper.add(st);
+      }
+      // lightning-bolt tail
+      const tail = new THREE.Group();
+      tail.position.set(0, 0.3 * S, -0.42 * S);
+      upper.add(tail);
+      this.parts.tail = tail;
+      const base = part(new THREE.BoxGeometry(0.14 * S, 0.18 * S, 0.1 * S), tip, { outline: false });
+      tail.add(base);
+      const z1 = part(new THREE.BoxGeometry(0.5 * S, 0.22 * S, 0.1 * S), body, { thickness: 0.015 });
+      z1.position.set(-0.2 * S, 0.2 * S, 0);
+      z1.rotation.z = 0.5;
+      tail.add(z1);
+      const z2 = part(new THREE.BoxGeometry(0.52 * S, 0.24 * S, 0.1 * S), body, { thickness: 0.015 });
+      z2.position.set(0.02 * S, 0.45 * S, 0);
+      z2.rotation.z = -0.6;
+      tail.add(z2);
+      const z3 = part(new THREE.BoxGeometry(0.62 * S, 0.3 * S, 0.1 * S), body, { thickness: 0.015 });
+      z3.position.set(-0.18 * S, 0.74 * S, 0);
+      z3.rotation.z = 0.5;
+      tail.add(z3);
+    } else {
+      // jigglypuff: small pointed ears + forehead curl
+      for (const side of [-1, 1]) {
+        const ear = part(new THREE.ConeGeometry(0.12 * S, 0.22 * S, 6), body, { thickness: 0.014 });
+        ear.position.set(side * headR * 0.55, headR * 0.82, -headR * 0.1);
+        ear.rotation.z = side * -0.5;
+        headG.add(ear);
+        const inner = part(new THREE.ConeGeometry(0.06 * S, 0.14 * S, 6), tip, { outline: false });
+        inner.position.set(side * headR * 0.55, headR * 0.84, -headR * 0.04);
+        inner.rotation.z = side * -0.5;
+        headG.add(inner);
+      }
+      const curl = part(new THREE.TorusGeometry(0.14 * S, 0.05 * S, 8, 16, Math.PI * 1.5), body, { thickness: 0.014 });
+      curl.position.set(0, headR * 0.92, headR * 0.45);
+      curl.rotation.set(0.5, 0, 0.3);
+      headG.add(curl);
     }
   }
 

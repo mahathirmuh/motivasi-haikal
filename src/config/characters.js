@@ -86,6 +86,24 @@ export const PRESETS = [
     spike: '#dfe7e2',
     accent: '#9be07a',
   },
+  {
+    id: 'pikachu',
+    name: 'Pikachu',
+    kind: 'pokemon',
+    mon: 'pika',
+    body: '#ffd83b',
+    accent: '#e23b2e', // cheeks
+    tip: '#3a2f25', // ear tips / stripes
+  },
+  {
+    id: 'jigglypuff',
+    name: 'Jigglypuff',
+    kind: 'pokemon',
+    mon: 'jiggly',
+    body: '#f4b8d8',
+    accent: '#3a6ea5', // eyes
+    tip: '#ef7a9b',
+  },
   // To use a real .glb (e.g. a rigged Mixamo character) instead of a procedural
   // body, add a preset like the following. Avatar will load it and play its
   // walk/idle clips, falling back to the placeholder if it can't be loaded:

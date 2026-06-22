@@ -5,5 +5,3 @@ dist-ssr
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
-# generated/copied at install time
-public/assets/fonts/
