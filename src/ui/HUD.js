@@ -2,14 +2,19 @@
 // sound toggle, and a "customize character" button.
 import { el, uiRoot } from '../utils/dom.js';
 import { FLOWERS, FLOWER_IDS } from '../config/flowers.js';
+import { SHOP_PRICES } from '../config/constants.js';
 
 export class HUD {
-  constructor({ onSelectSeed, onToggleMute, onCustomize }) {
+  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed }) {
     this.onSelectSeed = onSelectSeed || (() => {});
     this.onToggleMute = onToggleMute || (() => {});
     this.onCustomize = onCustomize || (() => {});
+    this.onBuySeed = onBuySeed || (() => {});
     this.seedSlots = {};
     this._toastTimer = null;
+    this._coins = 0;
+    this._seeds = {};
+    this._shopOpen = false;
     this._build();
   }
 
@@ -20,17 +25,25 @@ export class HUD {
     this.coinsEl = el('span', { text: '0' });
     const coins = el('div', { class: 'hud-coins' }, [el('span', { class: 'coin', text: '🪙' }), this.coinsEl]);
 
+    const shopBtn = el(
+      'button',
+      { class: 'btn btn--ghost hud-icon-btn', title: 'Toko bibit (B)', onClick: () => this.toggleShop() },
+      '🛒'
+    );
     this.musicBtn = el(
       'button',
-      { class: 'btn btn--ghost hud-icon-btn', title: 'Suara on/off', onClick: () => this.onToggleMute() },
+      { class: 'btn btn--ghost hud-icon-btn', title: 'Suara on/off (M)', onClick: () => this.onToggleMute() },
       '🔊'
     );
     const custBtn = el(
       'button',
-      { class: 'btn btn--ghost hud-icon-btn', title: 'Ganti karakter', onClick: () => this.onCustomize() },
+      { class: 'btn btn--ghost hud-icon-btn', title: 'Ganti karakter (C)', onClick: () => this.onCustomize() },
       '👕'
     );
-    const top = el('div', { class: 'hud-top' }, [coins, el('div', { class: 'hud-top-right' }, [this.musicBtn, custBtn])]);
+    const top = el('div', { class: 'hud-top' }, [
+      coins,
+      el('div', { class: 'hud-top-right' }, [shopBtn, this.musicBtn, custBtn]),
+    ]);
 
     // missions
     this.missionsBody = el('div', {});
@@ -55,23 +68,76 @@ export class HUD {
       html:
         '<b>🖱️ Mouse:</b> klik tanah = jalan · klik petak = tanam/siram/panen<br>' +
         '<b>⌨️ Keyboard:</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>/panah = jalan · ' +
-        '<kbd>E</kbd>/<kbd>Spasi</kbd> = aksi · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> = bibit · ' +
-        '<kbd>M</kbd> = suara · <kbd>C</kbd> = kostum' +
+        '<kbd>E</kbd>/<kbd>Spasi</kbd> = aksi · <kbd>1</kbd>-<kbd>4</kbd> = bibit · ' +
+        '<kbd>B</kbd> = toko · <kbd>M</kbd> = suara · <kbd>C</kbd> = kostum' +
         '<div class="credit">By Kakak Mahathir ya Haikal ^,^</div>',
     });
 
     this.toastEl = el('div', { class: 'toast' });
 
-    root.append(top, missions, this.invEl, help, this.toastEl);
+    // shop (hidden until opened)
+    this.shopBody = el('div', { class: 'shop-body' });
+    this.shopCoins = el('span', {});
+    const shopPanel = el('div', { class: 'shop-panel' }, [
+      el('button', { class: 'shop-close', title: 'Tutup', onClick: () => this.closeShop() }, '✕'),
+      el('h3', { text: '🛒 Toko Bibit' }),
+      el('div', { class: 'shop-coins' }, [el('span', { class: 'coin', text: '🪙' }), this.shopCoins]),
+      this.shopBody,
+    ]);
+    this.shopEl = el('div', { class: 'shop-modal hidden', onClick: (e) => {
+      if (e.target === this.shopEl) this.closeShop();
+    } }, [shopPanel]);
+
+    root.append(top, missions, this.invEl, help, this.toastEl, this.shopEl);
   }
 
   setCoins(n) {
+    this._coins = n;
     this.coinsEl.textContent = String(n);
+    if (this._shopOpen) this._renderShop();
   }
 
   setInventory(seeds) {
+    this._seeds = seeds;
     for (const id of FLOWER_IDS) {
       if (this.seedSlots[id]) this.seedSlots[id].ct.textContent = String(seeds[id] || 0);
+    }
+    if (this._shopOpen) this._renderShop();
+  }
+
+  toggleShop() {
+    this._shopOpen ? this.closeShop() : this.openShop();
+  }
+  openShop() {
+    this._shopOpen = true;
+    this.shopEl.classList.remove('hidden');
+    this._renderShop();
+  }
+  closeShop() {
+    this._shopOpen = false;
+    this.shopEl.classList.add('hidden');
+  }
+
+  _renderShop() {
+    this.shopCoins.textContent = String(this._coins);
+    while (this.shopBody.firstChild) this.shopBody.removeChild(this.shopBody.firstChild);
+    for (const id of FLOWER_IDS) {
+      const f = FLOWERS[id];
+      const price = SHOP_PRICES[id] ?? 10;
+      const owned = this._seeds[id] || 0;
+      const afford = this._coins >= price;
+      const buy = el(
+        'button',
+        { class: 'btn btn--ghost shop-buy' + (afford ? '' : ' disabled'), onClick: () => afford && this.onBuySeed(id) },
+        `Beli · ${price} 🪙`
+      );
+      const row = el('div', { class: 'shop-row' }, [
+        el('span', { class: 'shop-ico', text: f.icon }),
+        el('span', { class: 'shop-name', text: f.name }),
+        el('span', { class: 'shop-own', text: `x${owned}` }),
+        buy,
+      ]);
+      this.shopBody.appendChild(row);
     }
   }
 

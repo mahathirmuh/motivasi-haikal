@@ -4,13 +4,15 @@ import { Sky } from '../world/Sky.js';
 import { Sea } from '../world/Sea.js';
 import { Island } from '../world/Island.js';
 import { Scenery } from '../world/Scenery.js';
+import { Fireflies } from '../world/Fireflies.js';
+import { SeaLife } from '../world/SeaLife.js';
 import { addLights, addFog } from '../gfx/lighting.js';
 import { Avatar } from '../entities/Avatar.js';
 import { Plot } from '../entities/Plot.js';
 import { HUD } from '../ui/HUD.js';
 import { Particles } from '../gfx/Particles.js';
 import { state } from '../core/state.js';
-import { GRID, ISLAND, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH } from '../config/constants.js';
+import { GRID, ISLAND, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH, SHOP_PRICES } from '../config/constants.js';
 import { getFlower } from '../config/flowers.js';
 
 export class GardenScreen {
@@ -41,6 +43,8 @@ export class GardenScreen {
     new Island(this.scene);
     this.scenery = new Scenery(this.scene);
     this.particles = new Particles(this.scene);
+    this.fireflies = new Fireflies(this.scene);
+    this.seaLife = new SeaLife(this.scene);
     this.dayTime = 0.18; // start mid-morning
     this.sky.setDayNight(this.dayTime, this.lights);
 
@@ -82,6 +86,7 @@ export class GardenScreen {
       onSelectSeed: (type) => this._selectSeed(type),
       onToggleMute: () => this.hud.setMuted(this.app.audio?.toggleMute()),
       onCustomize: () => this._openCustomize(),
+      onBuySeed: (type) => this._buySeed(type),
     });
 
     this._refreshHUD();
@@ -144,6 +149,7 @@ export class GardenScreen {
       else if (k === '2') this._selectSeed('tulip');
       else if (k === '3') this._selectSeed('sunflower');
       else if (k === '4') this._selectSeed('lily');
+      else if (k === 'b') this.hud.toggleShop();
       else if (k === 'm') this.hud.setMuted(this.app.audio?.toggleMute());
       else if (k === 'c') this._openCustomize();
     };
@@ -242,6 +248,21 @@ export class GardenScreen {
     this.app.audio?.play('click');
   }
 
+  _buySeed(type) {
+    const price = SHOP_PRICES[type] ?? 10;
+    if (state.data.coins < price) {
+      this.hud.toast('Koin tidak cukup 😅');
+      this.app.audio?.play('click');
+      return;
+    }
+    state.data.coins -= price;
+    state.addSeeds(type, 1);
+    state.save();
+    this.app.audio?.play('pop');
+    this.hud.toast(`Beli bibit ${getFlower(type).name} 🌱`);
+    this._refreshHUD();
+  }
+
   _standPoint(plot) {
     const p = plot.position;
     const dir = new THREE.Vector3(this.avatar.position.x - p.x, 0, this.avatar.position.z - p.z);
@@ -324,6 +345,16 @@ export class GardenScreen {
     state.replaceCompleted();
   }
 
+  _onBloom(plot) {
+    const f = plot.flower?.type;
+    if (this.particles) {
+      const pos = new THREE.Vector3(plot.position.x, 0.95, plot.position.z);
+      this.particles.burst(pos, [f ? f.petal : '#fff', f ? f.petalInner : '#fff', '#ffffff'], 12);
+    }
+    this.app.audio?.play('pop');
+    this.hud.toast(`${f ? f.name : 'Bunga'} mekar! 🌸 siap panen`);
+  }
+
   _fxAtPlot(plot, flower, kind) {
     if (!this.particles) return;
     const pos = new THREE.Vector3(plot.position.x, 0.75, plot.position.z);
@@ -383,7 +414,9 @@ export class GardenScreen {
       this.avatar.root.position.x *= k;
       this.avatar.root.position.z *= k;
     }
-    for (const plot of this.plots) plot.update(dt);
+    for (const plot of this.plots) {
+      if (plot.update(dt)) this._onBloom(plot);
+    }
 
     this.sky?.update(dt);
     this.dayTime = (this.dayTime + dt / DAY_LENGTH) % 1;
@@ -391,6 +424,8 @@ export class GardenScreen {
     this.sea?.update(dt);
     this.scenery?.update(dt, this.app.clock.elapsedTime);
     this.particles?.update(dt);
+    this.fireflies?.update(dt, this.app.clock.elapsedTime, this.sky.nightLevel);
+    this.seaLife?.update(dt);
 
     // keep the shadow-casting light centred on the avatar; direction from day/night
     if (this.sun) {

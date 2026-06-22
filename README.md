@@ -31,9 +31,12 @@ real `.glb` models / audio later.
   movement**, a grid of plots, timed growth (`seed → sprout → bloom`),
   **plant / water (speeds growth) / harvest (coins + bonus seeds)**, a seed
   inventory of 4 flower types (mawar, tulip, bunga matahari, **lily**), coins,
-  **harvest particle bursts + floating coin numbers**, and a **dynamic mission
-  checklist** that rotates: each finished mission is replaced by a fresh random
-  one (plant N, plant a type, harvest N, water N, earn N coins).
+  a **seed shop** (spend coins to buy seeds), **harvest particle bursts +
+  floating coin numbers**, a **bloom sparkle** when a flower opens, and a
+  **dynamic mission checklist** that rotates: each finished mission is replaced
+  by a fresh random one (plant N, plant a type, harvest N, water N, earn N coins).
+- **Living scene**: fireflies drift over the island at night, and fish leap out
+  of the sea near the shore.
 - **Audio (Howler.js)**: a calming ocean + wind ambiance loop, gentle music, and
   SFX for footsteps, watering, harvest, and UI — all synthesized to WAV at
   runtime (no audio files needed).
@@ -71,6 +74,7 @@ Requires Node 18+.
 | `W` `A` `S` `D` / Arrow keys | Move the character (camera-relative) |
 | `E` or `Space` | Act on the nearest plot (plant / water / harvest) |
 | `1` `2` `3` `4` | Select seed (Mawar / Tulip / Matahari / Lily) |
+| `B` | Open the seed shop |
 | `M` | Toggle sound |
 | `C` | Open character customization |
 

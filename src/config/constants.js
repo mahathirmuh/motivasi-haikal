@@ -72,6 +72,9 @@ export const STAGE_NAMES = ['seed', 'sprout', 'bloom'];
 export const HARVEST_COINS = 12;
 export const HARVEST_SEED_REWARD = 1; // bonus seeds returned on harvest
 
+// Seed shop prices (coins per seed).
+export const SHOP_PRICES = { rose: 8, tulip: 10, sunflower: 12, lily: 18 };
+
 // Dynamic missions: how many are active at once.
 export const MISSION_COUNT = 4;
 

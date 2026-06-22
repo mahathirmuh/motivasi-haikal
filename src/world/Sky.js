@@ -121,6 +121,7 @@ export class Sky {
     }
 
     this.sunOffset = new THREE.Vector3(8, 14, 6); // direction for the shadow-casting light
+    this.nightLevel = 0;
     scene.add(this.group);
   }
 
@@ -155,6 +156,7 @@ export class Sky {
     this.domeMat.uniforms.top.value.copy(topC);
     this.domeMat.uniforms.bottom.value.copy(botC);
     this.starMat.opacity = star;
+    this.nightLevel = star; // 0 (day) .. 1 (night)
 
     // sun arc: rises +x, peaks overhead, sets -x, below horizon at night
     const elev = Math.sin(t * Math.PI * 2);

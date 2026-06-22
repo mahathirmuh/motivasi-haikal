@@ -71,9 +71,15 @@ export class Plot {
     this._applySoilColor();
   }
 
+  /** @returns {boolean} true on the frame the flower reaches full bloom */
   update(dt) {
-    if (this.flower) this.flower.update(dt);
+    let justBloomed = false;
+    if (this.flower) {
+      const changed = this.flower.update(dt);
+      if (changed && this.flower.isBloom) justBloomed = true;
+    }
     this._applySoilColor();
+    return justBloomed;
   }
 
   serialize() {
