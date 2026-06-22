@@ -316,6 +316,59 @@ body {
 .hud-coins .coin {
   font-size: 20px;
 }
+.hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.hud-level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 5px 12px 5px 10px;
+  box-shadow: var(--shadow);
+}
+.lvl-badge {
+  font-weight: 800;
+  font-size: 13px;
+  color: #5a8f3a;
+}
+.xp-bar {
+  width: 96px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(120, 92, 56, 0.15);
+  overflow: hidden;
+}
+.xp-bar > i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #9be07a, #5fb23c);
+  transition: width 0.3s ease;
+}
+
+/* name tag above the avatar */
+.name-tag {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: rgba(74, 59, 42, 0.82);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 12;
+}
+.name-tag.hidden {
+  display: none;
+}
 .hud-top-right {
   display: flex;
   gap: 8px;

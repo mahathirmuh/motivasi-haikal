@@ -22,6 +22,7 @@ import { Particles } from '../gfx/Particles.js';
 import { state } from '../core/state.js';
 import { GRID, ISLAND, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH, SHOP_PRICES, plotUnlockCost } from '../config/constants.js';
 import { getFlower, FLOWER_IDS } from '../config/flowers.js';
+import { getPreset } from '../config/characters.js';
 import { ACHIEVEMENTS } from '../config/achievements.js';
 import { getUpgrade, upgradeCost } from '../config/upgrades.js';
 import { mods, recomputeMods } from '../core/modifiers.js';
@@ -69,6 +70,11 @@ export class GardenScreen {
     this._npcTipCd = 0;
     this._npcBubble = el('div', { class: 'npc-bubble hidden', text: MOTIVATION[0] });
     uiRoot().appendChild(this._npcBubble);
+
+    // floating name tag above the avatar
+    const nm = (state.data.profile.name || '').trim() || getPreset(state.data.profile.preset).name;
+    this._nameTag = el('div', { class: 'name-tag', text: nm });
+    uiRoot().appendChild(this._nameTag);
 
     this._buildPlots();
 
@@ -378,6 +384,7 @@ export class GardenScreen {
     state.data.coins -= cost;
     state.data.unlockedPlots += 1;
     state.save();
+    this._awardXp(15);
     plot.setLocked(false);
     this.app.audio?.play('ding');
     this._fxAtPlot(plot, null, 'plant');
@@ -402,6 +409,7 @@ export class GardenScreen {
     state.data.seeds[type] -= 1;
     plot.plant(type);
     state.recordPlant(type);
+    this._awardXp(5);
     this.app.audio?.play('pop');
     this._fxAtPlot(plot, flower, 'plant');
     this.hud.toast(`Menanam ${flower.name} 🌱`);
@@ -412,6 +420,7 @@ export class GardenScreen {
 
   _water(plot) {
     if (!plot.water()) return;
+    this._awardXp(2);
     this.app.audio?.play('water');
     this._fxAtPlot(plot, plot.flower?.type, 'water');
     this.hud.toast('Disiram 💧 tumbuh lebih cepat!');
@@ -429,6 +438,7 @@ export class GardenScreen {
     state.addSeeds(type, HARVEST_SEED_REWARD);
     state.addCoins(coins);
     state.recordHarvest(type);
+    this._awardXp(10);
     this.app.audio?.play('ding');
     this._fxAtPlot(plot, flower, 'harvest');
     this._floatCoins(plot, coins);
@@ -568,6 +578,7 @@ export class GardenScreen {
     const f = this.fishing;
     const coins = 5 + Math.floor(Math.random() * 16); // 5..20
     state.addCoins(coins);
+    this._awardXp(8);
     this.app.audio?.play('ding');
     if (f.bobber) {
       this.particles?.burst(f.bobber.position.clone(), ['#5fb6c9', '#dff3f6', '#ffffff'], 16);
@@ -626,6 +637,19 @@ export class GardenScreen {
     }
   }
 
+  _updateNameTag() {
+    if (!this._nameTag) return;
+    const a = this.avatar.root.position;
+    const v = new THREE.Vector3(a.x, a.y + 2.05, a.z).project(this.camera);
+    if (v.z < 1) {
+      this._nameTag.style.left = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
+      this._nameTag.style.top = `${(-v.y * 0.5 + 0.5) * window.innerHeight}px`;
+      this._nameTag.classList.remove('hidden');
+    } else {
+      this._nameTag.classList.add('hidden');
+    }
+  }
+
   _updateNpc(dt) {
     if (this._npcTipCd > 0) this._npcTipCd -= dt;
     const np = this.npc.position;
@@ -642,6 +666,24 @@ export class GardenScreen {
     } else {
       this._npcBubble.classList.add('hidden');
     }
+  }
+
+  _awardXp(n) {
+    const gained = state.addXp(n);
+    if (gained > 0) this._onLevelUp(gained);
+  }
+
+  _onLevelUp(levels) {
+    const bonus = 20 * levels;
+    state.addCoins(bonus);
+    this.app.audio?.play('ding');
+    this.particles?.burst(
+      new THREE.Vector3(this.avatar.position.x, 1.3, this.avatar.position.z),
+      ['#ffd166', '#ffffff', '#ffb3d1', '#9be07a'],
+      24
+    );
+    this._floatWorld(new THREE.Vector3(this.avatar.position.x, 2.2, this.avatar.position.z), `Lv ${state.data.level}!`, '#5a8f3a');
+    this.hud.toast(`🎉 Naik ke Level ${state.data.level}! +${bonus} 🪙`);
   }
 
   _afterAction() {
@@ -699,6 +741,7 @@ export class GardenScreen {
 
   _refreshHUD() {
     this.hud.setCoins(state.data.coins);
+    this.hud.setLevel(state.data.level, state.data.xp, state.xpForLevel(state.data.level));
     this.hud.setInventory(state.data.seeds);
     this.hud.setSelectedSeed(state.data.selectedSeed);
     this.hud.setMissions(state.data.missions);
@@ -747,6 +790,7 @@ export class GardenScreen {
     this.npc?.update(dt, this.app.clock.elapsedTime);
     this.pet?.update(dt, this.avatar.position);
     this._updateNpc(dt);
+    this._updateNameTag();
     this._updateFishing(dt);
     // rain or the auto-sprinkler keeps the garden watered (growth boost)
     const autoWet = this.weather?.isRaining ? 0.4 : mods.sprinkler > 0 ? 0.1 + 0.15 * mods.sprinkler : 0;

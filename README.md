@@ -25,6 +25,9 @@ real `.glb` models / audio later.
   procedural body and gait. Optional name. Saved to `localStorage`.
 - **Garden fairy & pet**: a fairy NPC gives Haikal motivational messages (and the
   odd coin), and a little chick hops along behind you.
+- **Levels & XP**: gardening and fishing earn XP; level up for a coin bonus and a
+  little celebration. Your level + XP bar show top-left, and your name floats
+  above your character.
 - **Seaside world**: a lightweight **toon ocean** (vertex-displaced waves +
   animated shoreline foam), a grass plateau ringed by sand and a low cliff,
   palm trees, rocks, drifting clouds, seagulls, and a full **day/night cycle**

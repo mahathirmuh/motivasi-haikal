@@ -41,6 +41,14 @@ export class HUD {
     this.coinsEl = el('span', { text: '0' });
     const coins = el('div', { class: 'hud-coins' }, [el('span', { class: 'coin', text: '🪙' }), this.coinsEl]);
 
+    this.levelEl = el('span', { text: '1' });
+    this.xpFill = el('i', {});
+    const levelChip = el('div', { class: 'hud-level' }, [
+      el('span', { class: 'lvl-badge' }, ['Lv ', this.levelEl]),
+      el('div', { class: 'xp-bar' }, [this.xpFill]),
+    ]);
+    const left = el('div', { class: 'hud-left' }, [coins, levelChip]);
+
     const upgBtn = el(
       'button',
       { class: 'btn btn--ghost hud-icon-btn', title: 'Upgrade (U)', onClick: () => this.toggleUpg() },
@@ -77,7 +85,7 @@ export class HUD {
       '👕'
     );
     const top = el('div', { class: 'hud-top' }, [
-      coins,
+      left,
       el('div', { class: 'hud-top-right' }, [this.weatherBtn, upgBtn, achBtn, albumBtn, shopBtn, this.musicBtn, custBtn]),
     ]);
 
@@ -276,6 +284,11 @@ export class HUD {
     this.coinsEl.textContent = String(n);
     if (this._shopOpen) this._renderShop();
     if (this._upgOpen) this._renderUpg();
+  }
+
+  setLevel(level, xp, need) {
+    this.levelEl.textContent = String(level);
+    this.xpFill.style.width = `${Math.min(100, Math.round((xp / need) * 100))}%`;
   }
 
   setUpgrades(upgrades) {

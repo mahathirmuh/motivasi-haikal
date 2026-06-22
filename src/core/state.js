@@ -13,6 +13,9 @@ function freshState() {
     muted: false,
     upgrades: { growth: 0, coin: 0, sprinkler: 0 },
     unlockedPlots: STARTING_PLOTS,
+    // progression
+    level: 1,
+    xp: 0,
     // stats
     plantsPlanted: 0,
     harvests: 0,
@@ -83,6 +86,25 @@ class GameState {
   }
   addSeeds(type, n) {
     this.data.seeds[type] = (this.data.seeds[type] || 0) + n;
+  }
+
+  // ----- progression -----
+  xpForLevel(level) {
+    return 50 + (level - 1) * 40;
+  }
+  /** Add XP; returns how many levels were gained. */
+  addXp(n) {
+    this.data.xp += n;
+    let gained = 0;
+    let need = this.xpForLevel(this.data.level);
+    while (this.data.xp >= need) {
+      this.data.xp -= need;
+      this.data.level += 1;
+      gained += 1;
+      need = this.xpForLevel(this.data.level);
+    }
+    this.save();
+    return gained;
   }
 
   // ----- stats -----
