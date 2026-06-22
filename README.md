@@ -35,11 +35,13 @@ real `.glb` models / audio later.
   floating coin numbers**, a **bloom sparkle** when a flower opens, and a
   **dynamic mission checklist** that rotates: each finished mission is replaced
   by a fresh random one (plant N, plant a type, harvest N, water N, earn N coins).
-- **Living scene & weather**: butterflies flutter by day, fireflies drift at
-  night, fish leap from the sea, and occasional **rain** (which auto-waters the
-  garden) clears into a **rainbow**.
-- **Flower album**: a collection panel tracking which flowers you've discovered
-  and how many you've harvested.
+- **Living scene & weather**: butterflies by day, fireflies at night, crabs
+  scuttling on the sand, fish leaping from the sea, shooting stars at night, and
+  occasional **rain** (which auto-waters the garden) clearing into a **rainbow**.
+- **Flower album + achievements**: a collection panel tracking discovered/
+  harvested flowers, and unlockable achievements with progress.
+- **Touch controls**: on touch devices an on-screen joystick + action button
+  appear automatically, so it's fully playable on a phone.
 - **Audio (Howler.js)**: a calming ocean + wind ambiance loop, gentle music, and
   SFX for footsteps, watering, harvest, and UI — all synthesized to WAV at
   runtime (no audio files needed).
@@ -79,8 +81,12 @@ Requires Node 18+.
 | `1` `2` `3` `4` | Select seed (Mawar / Tulip / Matahari / Lily) |
 | `B` | Open the seed shop |
 | `G` | Open the flower album |
+| `T` | Open achievements |
 | `M` | Toggle sound |
 | `C` | Open character customization |
+
+On a phone/tablet, use the on-screen **joystick** (bottom-left) to walk and the
+**✿ button** (bottom-right) to act on a nearby plot.
 
 Drag with the mouse to orbit the camera, scroll to zoom.
 

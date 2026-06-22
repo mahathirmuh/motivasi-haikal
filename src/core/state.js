@@ -14,6 +14,7 @@ function freshState() {
     // stats
     plantsPlanted: 0,
     harvests: 0,
+    coinsEarned: 0, // cumulative (never decreases when spending)
     plantedTypes: [],
     // dynamic, rotating missions (array of mission objects)
     missions: generateMissions(MISSION_COUNT),
@@ -70,6 +71,7 @@ class GameState {
   // ----- economy -----
   addCoins(n) {
     this.data.coins += n;
+    if (n > 0) this.data.coinsEarned = (this.data.coinsEarned || 0) + n;
     this.save();
   }
   addSeeds(type, n) {

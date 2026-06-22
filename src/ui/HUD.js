@@ -3,20 +3,25 @@
 import { el, uiRoot } from '../utils/dom.js';
 import { FLOWERS, FLOWER_IDS } from '../config/flowers.js';
 import { SHOP_PRICES } from '../config/constants.js';
+import { ACHIEVEMENTS } from '../config/achievements.js';
 
 export class HUD {
-  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed }) {
+  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction }) {
     this.onSelectSeed = onSelectSeed || (() => {});
     this.onToggleMute = onToggleMute || (() => {});
     this.onCustomize = onCustomize || (() => {});
     this.onBuySeed = onBuySeed || (() => {});
+    this.onAction = onAction || (() => {});
     this.seedSlots = {};
     this._toastTimer = null;
     this._coins = 0;
     this._seeds = {};
     this._bouquet = {};
+    this._stats = {};
     this._shopOpen = false;
     this._albumOpen = false;
+    this._achOpen = false;
+    this.joy = { x: 0, y: 0 }; // touch joystick vector
     this._build();
   }
 
@@ -27,6 +32,11 @@ export class HUD {
     this.coinsEl = el('span', { text: '0' });
     const coins = el('div', { class: 'hud-coins' }, [el('span', { class: 'coin', text: '🪙' }), this.coinsEl]);
 
+    const achBtn = el(
+      'button',
+      { class: 'btn btn--ghost hud-icon-btn', title: 'Pencapaian (T)', onClick: () => this.toggleAch() },
+      '🏆'
+    );
     const albumBtn = el(
       'button',
       { class: 'btn btn--ghost hud-icon-btn', title: 'Album bunga (G)', onClick: () => this.toggleAlbum() },
@@ -49,7 +59,7 @@ export class HUD {
     );
     const top = el('div', { class: 'hud-top' }, [
       coins,
-      el('div', { class: 'hud-top-right' }, [albumBtn, shopBtn, this.musicBtn, custBtn]),
+      el('div', { class: 'hud-top-right' }, [achBtn, albumBtn, shopBtn, this.musicBtn, custBtn]),
     ]);
 
     // missions
@@ -108,7 +118,64 @@ export class HUD {
       if (e.target === this.albumEl) this.closeAlbum();
     } }, [albumPanel]);
 
-    root.append(top, missions, this.invEl, help, this.toastEl, this.shopEl, this.albumEl);
+    // achievements (hidden until opened)
+    this.achBody = el('div', { class: 'shop-body' });
+    this.achCount = el('span', {});
+    const achPanel = el('div', { class: 'shop-panel' }, [
+      el('button', { class: 'shop-close', title: 'Tutup', onClick: () => this.closeAch() }, '✕'),
+      el('h3', { text: '🏆 Pencapaian' }),
+      el('div', { class: 'shop-coins' }, ['Terbuka: ', this.achCount]),
+      this.achBody,
+    ]);
+    this.achEl = el('div', { class: 'shop-modal hidden', onClick: (e) => {
+      if (e.target === this.achEl) this.closeAch();
+    } }, [achPanel]);
+
+    // touch controls (shown on coarse-pointer devices via CSS)
+    this.joyKnob = el('div', { class: 'joy-knob' });
+    this.joyBase = el('div', { class: 'joy-base' }, [this.joyKnob]);
+    const actionBtn = el('button', { class: 'touch-action' }, '✿');
+    this.touchEl = el('div', { class: 'touch-controls' }, [this.joyBase, actionBtn]);
+    this._bindJoystick(actionBtn);
+
+    root.append(top, missions, this.invEl, help, this.toastEl, this.shopEl, this.albumEl, this.achEl, this.touchEl);
+  }
+
+  _bindJoystick(actionBtn) {
+    const R = 46; // max knob travel (px)
+    let active = false;
+    const setFromEvent = (e) => {
+      const rect = this.joyBase.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      let dx = e.clientX - cx;
+      let dy = e.clientY - cy;
+      const len = Math.hypot(dx, dy) || 1;
+      const cl = Math.min(len, R);
+      dx = (dx / len) * cl;
+      dy = (dy / len) * cl;
+      this.joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      this.joy.x = dx / R;
+      this.joy.y = dy / R;
+    };
+    const reset = () => {
+      active = false;
+      this.joy.x = 0;
+      this.joy.y = 0;
+      this.joyKnob.style.transform = 'translate(0,0)';
+    };
+    this.joyBase.addEventListener('pointerdown', (e) => {
+      active = true;
+      this.joyBase.setPointerCapture?.(e.pointerId);
+      setFromEvent(e);
+    });
+    this.joyBase.addEventListener('pointermove', (e) => active && setFromEvent(e));
+    this.joyBase.addEventListener('pointerup', reset);
+    this.joyBase.addEventListener('pointercancel', reset);
+    actionBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      this.onAction();
+    });
   }
 
   setCoins(n) {
@@ -194,6 +261,48 @@ export class HUD {
       ]);
       this.albumBody.appendChild(row);
     }
+  }
+
+  setAchievements(stats) {
+    this._stats = stats || {};
+    if (this._achOpen) this._renderAch();
+  }
+
+  toggleAch() {
+    this._achOpen ? this.closeAch() : this.openAch();
+  }
+  openAch() {
+    this._achOpen = true;
+    this.achEl.classList.remove('hidden');
+    this._renderAch();
+  }
+  closeAch() {
+    this._achOpen = false;
+    this.achEl.classList.add('hidden');
+  }
+
+  _renderAch() {
+    const unlocked = ACHIEVEMENTS.filter((a) => (this._stats[a.metric] || 0) >= a.goal).length;
+    this.achCount.textContent = `${unlocked}/${ACHIEVEMENTS.length}`;
+    while (this.achBody.firstChild) this.achBody.removeChild(this.achBody.firstChild);
+    for (const a of ACHIEVEMENTS) {
+      const cur = Math.min(this._stats[a.metric] || 0, a.goal);
+      const done = cur >= a.goal;
+      const row = el('div', { class: 'ach-row' + (done ? ' done' : '') }, [
+        el('span', { class: 'shop-ico', text: done ? a.icon : '🔒' }),
+        el('div', { class: 'ach-info' }, [
+          el('div', { class: 'ach-name', text: a.name }),
+          el('div', { class: 'ach-desc', text: a.desc }),
+        ]),
+        el('span', { class: 'shop-own', text: done ? '✓' : `${cur}/${a.goal}` }),
+      ]);
+      this.achBody.appendChild(row);
+    }
+  }
+
+  /** Called by the garden when a new achievement unlocks. */
+  notifyAchievement(a) {
+    this.toast(`🏆 ${a.name}!`);
   }
 
   setSelectedSeed(type) {

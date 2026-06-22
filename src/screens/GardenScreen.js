@@ -15,7 +15,8 @@ import { HUD } from '../ui/HUD.js';
 import { Particles } from '../gfx/Particles.js';
 import { state } from '../core/state.js';
 import { GRID, ISLAND, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH, SHOP_PRICES } from '../config/constants.js';
-import { getFlower } from '../config/flowers.js';
+import { getFlower, FLOWER_IDS } from '../config/flowers.js';
+import { ACHIEVEMENTS } from '../config/achievements.js';
 
 export class GardenScreen {
   constructor(app) {
@@ -91,8 +92,11 @@ export class GardenScreen {
       onToggleMute: () => this.hud.setMuted(this.app.audio?.toggleMute()),
       onCustomize: () => this._openCustomize(),
       onBuySeed: (type) => this._buySeed(type),
+      onAction: () => this._keyboardInteract(),
     });
 
+    // track already-unlocked achievements so only NEW ones toast
+    this._achUnlocked = new Set(ACHIEVEMENTS.filter((a) => this._statValue(a.metric) >= a.goal).map((a) => a.id));
     this._refreshHUD();
 
     // input
@@ -155,6 +159,7 @@ export class GardenScreen {
       else if (k === '4') this._selectSeed('lily');
       else if (k === 'b') this.hud.toggleShop();
       else if (k === 'g') this.hud.toggleAlbum();
+      else if (k === 't') this.hud.toggleAch();
       else if (k === 'm') this.hud.setMuted(this.app.audio?.toggleMute());
       else if (k === 'c') this._openCustomize();
     };
@@ -172,6 +177,14 @@ export class GardenScreen {
     if (K.has('s') || K.has('arrowdown')) f -= 1;
     if (K.has('a') || K.has('arrowleft')) s -= 1;
     if (K.has('d') || K.has('arrowright')) s += 1;
+    // touch joystick (up on stick = forward)
+    if (f === 0 && s === 0 && this.hud) {
+      const j = this.hud.joy;
+      if (Math.hypot(j.x, j.y) > 0.18) {
+        f = -j.y;
+        s = j.x;
+      }
+    }
     if (f === 0 && s === 0) {
       this.avatar.setMoveVector(0, 0);
       return;
@@ -394,13 +407,53 @@ export class GardenScreen {
     state.save();
   }
 
+  _statValue(metric) {
+    const d = state.data;
+    switch (metric) {
+      case 'plant':
+        return d.plantsPlanted || 0;
+      case 'harvest':
+        return d.harvests || 0;
+      case 'coins':
+        return d.coinsEarned || 0;
+      case 'variety':
+        return (d.plantedTypes || []).length;
+      case 'discovered':
+        return FLOWER_IDS.filter((id) => (d.bouquet[id] || 0) > 0).length;
+      default:
+        return 0;
+    }
+  }
+
+  _stats() {
+    return {
+      plant: this._statValue('plant'),
+      harvest: this._statValue('harvest'),
+      coins: this._statValue('coins'),
+      variety: this._statValue('variety'),
+      discovered: this._statValue('discovered'),
+    };
+  }
+
+  _checkAchievements() {
+    for (const a of ACHIEVEMENTS) {
+      if (!this._achUnlocked.has(a.id) && this._statValue(a.metric) >= a.goal) {
+        this._achUnlocked.add(a.id);
+        this.hud.notifyAchievement(a);
+        this.app.audio?.play('ding');
+      }
+    }
+  }
+
   _refreshHUD() {
     this.hud.setCoins(state.data.coins);
     this.hud.setInventory(state.data.seeds);
     this.hud.setSelectedSeed(state.data.selectedSeed);
     this.hud.setMissions(state.data.missions);
     this.hud.setAlbum(state.data.bouquet);
+    this.hud.setAchievements(this._stats());
     this.hud.setMuted(!!state.data.muted);
+    this._checkAchievements();
   }
 
   _openCustomize() {

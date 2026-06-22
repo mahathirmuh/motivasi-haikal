@@ -549,6 +549,83 @@ body {
   opacity: 0.5;
   font-style: italic;
 }
+.ach-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px;
+  border-top: 1px solid var(--panel-border);
+  opacity: 0.55;
+}
+.ach-row.done {
+  opacity: 1;
+}
+.ach-info {
+  flex: 1;
+}
+.ach-name {
+  font-weight: 800;
+  color: #5a2e3e;
+}
+.ach-desc {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* touch controls — shown only on coarse-pointer (touch) devices */
+.touch-controls {
+  display: none;
+}
+@media (pointer: coarse) {
+  .touch-controls {
+    display: block;
+  }
+  /* the on-screen buttons replace the keyboard hint on touch devices */
+  .hud-help {
+    display: none;
+  }
+}
+.touch-controls.force-show {
+  display: block;
+}
+.joy-base {
+  position: absolute;
+  left: 26px;
+  bottom: 90px;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  background: rgba(255, 250, 240, 0.4);
+  border: 2px solid rgba(120, 92, 56, 0.3);
+  touch-action: none;
+}
+.joy-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #fffaf0, #ffd98a);
+  border: 2px solid rgba(120, 92, 56, 0.35);
+  box-shadow: var(--shadow);
+}
+.touch-action {
+  position: absolute;
+  right: 30px;
+  bottom: 110px;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  font-size: 34px;
+  border: 2px solid rgba(60, 110, 30, 0.4);
+  background: linear-gradient(180deg, #b6e89a, #7cc24f);
+  color: #2f4d18;
+  box-shadow: var(--shadow);
+  touch-action: none;
+  cursor: pointer;
+}
 
 /* floating reward numbers */
 .float-num {

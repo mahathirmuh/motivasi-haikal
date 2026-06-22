@@ -120,6 +120,24 @@ export class Sky {
       this.group.add(c);
     }
 
+    // shooting star (night only)
+    this.shootMat = new THREE.MeshBasicMaterial({
+      color: 0xcfe6ff,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    this.shoot = new THREE.Mesh(new THREE.BoxGeometry(7, 0.18, 0.18), this.shootMat);
+    this.shoot.visible = false;
+    this.group.add(this.shoot);
+    this.shootActive = false;
+    this.shootT = 0;
+    this.shootDur = 0.9;
+    this.shootTimer = 4 + Math.random() * 6;
+    this._ssFrom = new THREE.Vector3();
+    this._ssTo = new THREE.Vector3();
+
     this.sunOffset = new THREE.Vector3(8, 14, 6); // direction for the shadow-casting light
     this.nightLevel = 0;
     scene.add(this.group);
@@ -129,6 +147,46 @@ export class Sky {
     for (const c of this.clouds) {
       c.position.x += c.userData.speed * dt;
       if (c.position.x > this.bound) c.position.x = -this.bound;
+    }
+    this._updateShootingStar(dt);
+  }
+
+  _spawnShootingStar() {
+    const a = Math.random() * Math.PI * 2;
+    const startR = 220;
+    this._ssFrom.set(Math.cos(a) * startR, 120 + Math.random() * 70, Math.sin(a) * startR - 100);
+    this._ssTo.copy(this._ssFrom).add(
+      new THREE.Vector3((Math.random() - 0.5) * 170, -60 - Math.random() * 40, (Math.random() - 0.5) * 90)
+    );
+    this.shoot.position.copy(this._ssFrom);
+    const dir = this._ssTo.clone().sub(this._ssFrom).normalize();
+    this.shoot.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir);
+    this.shootActive = true;
+    this.shootT = 0;
+    this.shootDur = 0.7 + Math.random() * 0.5;
+    this.shoot.visible = true;
+  }
+
+  _updateShootingStar(dt) {
+    if (this.nightLevel <= 0.5) {
+      this.shootActive = false;
+      this.shoot.visible = false;
+      return;
+    }
+    if (this.shootActive) {
+      this.shootT += dt;
+      const k = this.shootT / this.shootDur;
+      if (k >= 1) {
+        this.shootActive = false;
+        this.shoot.visible = false;
+        this.shootTimer = 4 + Math.random() * 8;
+      } else {
+        this.shoot.position.lerpVectors(this._ssFrom, this._ssTo, k);
+        this.shootMat.opacity = Math.sin(k * Math.PI) * 0.9 * this.nightLevel;
+      }
+    } else {
+      this.shootTimer -= dt;
+      if (this.shootTimer <= 0) this._spawnShootingStar();
     }
   }
 

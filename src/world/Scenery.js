@@ -107,6 +107,38 @@ function makeDecoFlower() {
   return g;
 }
 
+function makeCrab() {
+  const g = new THREE.Group();
+  const col = '#e8743b';
+  const mat = toon(col);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), mat);
+  body.scale.set(1.2, 0.55, 1);
+  body.position.y = 0.18;
+  addOutline(body, { thickness: 0.014 });
+  g.add(body);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x201a16 });
+  for (const s of [-1, 1]) {
+    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.14, 4), mat);
+    stalk.position.set(s * 0.1, 0.34, 0.16);
+    g.add(stalk);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), eyeMat);
+    eye.position.set(s * 0.1, 0.43, 0.16);
+    g.add(eye);
+    const claw = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), mat);
+    claw.scale.set(1, 0.7, 1.2);
+    claw.position.set(s * 0.36, 0.14, 0.18);
+    addOutline(claw, { thickness: 0.012 });
+    g.add(claw);
+    for (let i = 0; i < 3; i++) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.2, 4), toon('#b85a2a'));
+      leg.position.set(s * 0.28, 0.07, -0.12 + i * 0.12);
+      leg.rotation.z = s * 0.9;
+      g.add(leg);
+    }
+  }
+  return g;
+}
+
 function makeGull() {
   const g = new THREE.Group();
   const mat = new THREE.MeshBasicMaterial({ color: COLORS.gull, side: THREE.DoubleSide });
@@ -183,6 +215,20 @@ export class Scenery {
       this.gulls.push(gull);
       this.group.add(gull);
     }
+
+    // crabs scuttling on the sand
+    this.crabs = [];
+    for (let i = 0; i < 3; i++) {
+      const crab = makeCrab();
+      crab.scale.setScalar(rand(0.7, 0.95));
+      crab.userData.baseA = Math.random() * Math.PI * 2;
+      crab.userData.r = rand(ISLAND.grassR + 0.5, ISLAND.sandR - 0.6);
+      crab.userData.range = rand(0.12, 0.25);
+      crab.userData.speed = rand(0.5, 0.9);
+      crab.userData.phase = Math.random() * Math.PI * 2;
+      this.crabs.push(crab);
+      this.group.add(crab);
+    }
   }
 
   update(dt, t) {
@@ -197,6 +243,12 @@ export class Scenery {
       const flap = Math.sin(t * 6 + u.flapPhase) * 0.5;
       u.wingL.rotation.z = flap;
       u.wingR.rotation.z = -flap;
+    }
+    for (const c of this.crabs) {
+      const u = c.userData;
+      const ang = u.baseA + Math.sin(t * u.speed + u.phase) * u.range;
+      c.position.set(Math.cos(ang) * u.r, Math.abs(Math.sin(t * 7 + u.phase)) * 0.03, Math.sin(ang) * u.r);
+      c.rotation.y = -ang + Math.PI / 2;
     }
   }
 }
