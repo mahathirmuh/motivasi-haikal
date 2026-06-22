@@ -18,6 +18,7 @@ export class CharacterSelectScreen {
   enter(params = {}) {
     this.fromGarden = !!params.fromGarden;
     this.selection = { ...state.data.profile };
+    if (!GENDERS.find((g) => g.id === this.selection.gender)) this.selection.gender = 'female';
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);

@@ -84,6 +84,8 @@ export class Avatar {
     this.gait = 0;
     this.baseUpperY = 0;
     this.parts = {};
+    this.vy = 0; // vertical velocity (jump)
+    this.airY = 0; // height above ground
     // optional GLTF model + animation
     this.mixer = null;
     this.walkAction = null;
@@ -567,6 +569,15 @@ export class Avatar {
     this.moveDir.set(0, 0, 0);
   }
 
+  /** Hop, if currently on the ground. */
+  jump() {
+    if (this.airY <= 0.001) this.vy = 5.8;
+  }
+
+  get isAirborne() {
+    return this.airY > 0.001;
+  }
+
   get position() {
     return this.root.position;
   }
@@ -623,6 +634,17 @@ export class Avatar {
     // creature tail sway
     if (this.parts.tail) {
       this.parts.tail.rotation.y = Math.sin(this.gait * 0.5 + this.time * 1.6) * (moving01 ? 0.35 : 0.12);
+    }
+
+    // jump physics (vertical hop of the whole avatar)
+    if (this.vy !== 0 || this.airY > 0) {
+      this.vy -= 16 * dt;
+      this.airY += this.vy * dt;
+      if (this.airY <= 0) {
+        this.airY = 0;
+        this.vy = 0;
+      }
+      this.root.position.y = this.airY;
     }
 
     // GLTF animation (if a real model was loaded): crossfade walk/idle

@@ -72,9 +72,13 @@ Requires Node 18+.
 - **Walk**: click the ground.
 - **A plot**: click it to walk over and act — **plant** (uses the selected seed),
   **water** it while growing (speeds it up), and **harvest** once it blooms
-  (+coins, +bonus seed).
-- Pick the active seed in the bottom inventory bar. Toggle sound with 🔊, and
-  reopen character customization with 👕.
+  (+coins, +bonus seed). Locked plots: click to **unlock** with coins.
+- Pick the active seed in the bottom inventory bar. Top-right buttons: weather
+  🌦️, upgrades 🔧, achievements 🏆, album 🏵️, shop 🛒, sound 🔊, customize 👕.
+
+**Jump & fishing**
+- Press `Space` to **jump**. Walk to the beach edge and press `F` to **fish** —
+  wait for the bite, then press again to reel in coins (and sometimes a seed).
 
 **Keyboard shortcuts**
 

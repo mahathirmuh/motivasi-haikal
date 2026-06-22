@@ -58,6 +58,22 @@ export class Weather {
     return this.state === 'rain';
   }
 
+  /** Manually advance weather: dry -> rain -> rainbow -> dry. Returns new state. */
+  cycle() {
+    if (this.state === 'dry') {
+      this.state = 'rain';
+      this.rainDuration = 14 + Math.random() * 10;
+      this.rain.visible = true;
+    } else if (this.state === 'rain') {
+      this.state = 'rainbow';
+      this.timer = 9;
+    } else {
+      this.state = 'dry';
+      this.timer = 35 + Math.random() * 40;
+    }
+    return this.state;
+  }
+
   _setRainbow(a) {
     this.rainbowAlpha = a;
     this.rainbow.visible = a > 0.01;

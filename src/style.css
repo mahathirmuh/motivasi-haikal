@@ -319,6 +319,9 @@ body {
 .hud-top-right {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 70vw;
 }
 .hud-icon-btn {
   width: 46px;
@@ -625,6 +628,41 @@ body {
   box-shadow: var(--shadow);
   touch-action: none;
   cursor: pointer;
+}
+.touch-btn {
+  position: absolute;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  font-size: 26px;
+  border: 2px solid rgba(120, 92, 56, 0.3);
+  background: linear-gradient(180deg, #fffaf0, #ffe6bd);
+  box-shadow: var(--shadow);
+  touch-action: none;
+  cursor: pointer;
+}
+.touch-jump {
+  right: 128px;
+  bottom: 120px;
+}
+.touch-fish {
+  right: 40px;
+  bottom: 210px;
+}
+
+/* pause / menu overlay */
+.pause-panel {
+  width: min(340px, 88vw);
+  text-align: center;
+}
+.pause-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.pause-btns .btn {
+  width: 100%;
 }
 
 /* floating reward numbers */

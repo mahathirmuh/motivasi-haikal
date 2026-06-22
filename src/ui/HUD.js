@@ -7,13 +7,18 @@ import { ACHIEVEMENTS } from '../config/achievements.js';
 import { UPGRADES, upgradeCost } from '../config/upgrades.js';
 
 export class HUD {
-  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction, onBuyUpgrade }) {
+  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction, onBuyUpgrade, onJump, onFish, onReset, onWeather }) {
     this.onSelectSeed = onSelectSeed || (() => {});
     this.onToggleMute = onToggleMute || (() => {});
     this.onCustomize = onCustomize || (() => {});
     this.onBuySeed = onBuySeed || (() => {});
     this.onAction = onAction || (() => {});
     this.onBuyUpgrade = onBuyUpgrade || (() => {});
+    this.onJump = onJump || (() => {});
+    this.onFish = onFish || (() => {});
+    this.onReset = onReset || (() => {});
+    this.onWeather = onWeather || (() => {});
+    this._pauseOpen = false;
     this.seedSlots = {};
     this._toastTimer = null;
     this._coins = 0;
@@ -56,6 +61,11 @@ export class HUD {
       { class: 'btn btn--ghost hud-icon-btn', title: 'Toko bibit (B)', onClick: () => this.toggleShop() },
       '🛒'
     );
+    this.weatherBtn = el(
+      'button',
+      { class: 'btn btn--ghost hud-icon-btn', title: 'Ganti cuaca (H)', onClick: () => this.onWeather() },
+      '☀️'
+    );
     this.musicBtn = el(
       'button',
       { class: 'btn btn--ghost hud-icon-btn', title: 'Suara on/off (M)', onClick: () => this.onToggleMute() },
@@ -68,7 +78,7 @@ export class HUD {
     );
     const top = el('div', { class: 'hud-top' }, [
       coins,
-      el('div', { class: 'hud-top-right' }, [upgBtn, achBtn, albumBtn, shopBtn, this.musicBtn, custBtn]),
+      el('div', { class: 'hud-top-right' }, [this.weatherBtn, upgBtn, achBtn, albumBtn, shopBtn, this.musicBtn, custBtn]),
     ]);
 
     // missions
@@ -94,8 +104,9 @@ export class HUD {
       html:
         '<b>🖱️ Mouse:</b> klik tanah = jalan · klik petak = tanam/siram/panen<br>' +
         '<b>⌨️ Keyboard:</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>/panah = jalan · ' +
-        '<kbd>E</kbd>/<kbd>Spasi</kbd> = aksi · <kbd>1</kbd>-<kbd>4</kbd> = bibit · ' +
-        '<kbd>B</kbd> = toko · <kbd>M</kbd> = suara · <kbd>C</kbd> = kostum' +
+        '<kbd>Spasi</kbd> = lompat · <kbd>E</kbd> = aksi · <kbd>F</kbd> = mancing · ' +
+        '<kbd>1</kbd>-<kbd>5</kbd> = bibit · <kbd>B</kbd> toko · <kbd>U</kbd> upgrade · ' +
+        '<kbd>H</kbd> cuaca · <kbd>M</kbd> suara · <kbd>C</kbd> kostum · <kbd>Esc</kbd> jeda' +
         '<div class="credit">By Kakak Mahathir ya Haikal ^,^</div>',
     });
 
@@ -156,11 +167,71 @@ export class HUD {
     // touch controls (shown on coarse-pointer devices via CSS)
     this.joyKnob = el('div', { class: 'joy-knob' });
     this.joyBase = el('div', { class: 'joy-base' }, [this.joyKnob]);
-    const actionBtn = el('button', { class: 'touch-action' }, '✿');
-    this.touchEl = el('div', { class: 'touch-controls' }, [this.joyBase, actionBtn]);
+    const actionBtn = el('button', { class: 'touch-action', title: 'Aksi' }, '✿');
+    const jumpBtn = el('button', { class: 'touch-btn touch-jump', title: 'Lompat' }, '⤴');
+    const fishBtn = el('button', { class: 'touch-btn touch-fish', title: 'Mancing' }, '🎣');
+    this.touchEl = el('div', { class: 'touch-controls' }, [this.joyBase, actionBtn, jumpBtn, fishBtn]);
     this._bindJoystick(actionBtn);
+    jumpBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      this.onJump();
+    });
+    fishBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      this.onFish();
+    });
 
-    root.append(top, missions, this.invEl, help, this.toastEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.touchEl);
+    // pause / menu overlay
+    const pausePanel = el('div', { class: 'shop-panel pause-panel' }, [
+      el('h3', { text: '⏸️ Jeda' }),
+      el('div', { class: 'pause-btns' }, [
+        el('button', { class: 'btn btn--primary', onClick: () => this.closePause() }, 'Lanjutkan'),
+        el('button', { class: 'btn btn--ghost', onClick: () => this.onCustomize() }, '👕 Ganti Karakter'),
+        el('button', { class: 'btn btn--ghost', onClick: () => this.onToggleMute() }, '🔊 Suara on/off'),
+        el(
+          'button',
+          {
+            class: 'btn btn--ghost',
+            onClick: () => {
+              if (window.confirm('Reset semua progres? Tindakan ini tidak bisa dibatalkan.')) this.onReset();
+            },
+          },
+          '↺ Reset Progres'
+        ),
+      ]),
+    ]);
+    this.pauseEl = el('div', { class: 'shop-modal hidden', onClick: (e) => {
+      if (e.target === this.pauseEl) this.closePause();
+    } }, [pausePanel]);
+
+    root.append(top, missions, this.invEl, help, this.toastEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.pauseEl, this.touchEl);
+  }
+
+  setWeatherIcon(state) {
+    if (!this.weatherBtn) return;
+    this.weatherBtn.textContent = state === 'rain' ? '🌧️' : state === 'rainbow' ? '🌈' : '☀️';
+  }
+
+  anyPanelOpen() {
+    return this._shopOpen || this._albumOpen || this._achOpen || this._upgOpen || this._pauseOpen;
+  }
+  closeAllPanels() {
+    this.closeShop();
+    this.closeAlbum();
+    this.closeAch();
+    this.closeUpg();
+    this.closePause();
+  }
+  togglePause() {
+    this._pauseOpen ? this.closePause() : this.openPause();
+  }
+  openPause() {
+    this._pauseOpen = true;
+    this.pauseEl.classList.remove('hidden');
+  }
+  closePause() {
+    this._pauseOpen = false;
+    this.pauseEl.classList.add('hidden');
   }
 
   _bindJoystick(actionBtn) {

@@ -21,12 +21,6 @@ export const GENDERS = [
     icon: '♂',
     body: { height: 1.06, shoulders: 1.12, hips: 0.92, torsoTaper: 1.0, headScale: 1.02 },
   },
-  {
-    id: 'neutral',
-    label: 'Netral',
-    icon: '⚥',
-    body: { height: 1.03, shoulders: 0.98, hips: 0.98, torsoTaper: 0.94, headScale: 1.0 },
-  },
 ];
 
 // `kind` selects which body recipe Avatar builds: 'humanoid' | 'dino' | 'godzilla'.
@@ -113,12 +107,12 @@ export const PRESETS = [
 
 export const DEFAULT_PROFILE = {
   name: '',
-  gender: 'neutral',
+  gender: 'female',
   preset: 0, // index into PRESETS
 };
 
 export function getGender(id) {
-  return GENDERS.find((g) => g.id === id) || GENDERS[2];
+  return GENDERS.find((g) => g.id === id) || GENDERS[0];
 }
 export function getPreset(index) {
   const i = ((index % PRESETS.length) + PRESETS.length) % PRESETS.length;

@@ -9,6 +9,8 @@ import { SeaLife } from '../world/SeaLife.js';
 import { Butterflies } from '../world/Butterflies.js';
 import { Weather } from '../world/Weather.js';
 import { addLights, addFog } from '../gfx/lighting.js';
+import { toon } from '../gfx/toon.js';
+import { addOutline } from '../gfx/outline.js';
 import { Avatar } from '../entities/Avatar.js';
 import { Plot } from '../entities/Plot.js';
 import { HUD } from '../ui/HUD.js';
@@ -54,6 +56,7 @@ export class GardenScreen {
     this.weather = new Weather(this.scene);
     this.dayTime = 0.18; // start mid-morning
     this.sky.setDayNight(this.dayTime, this.lights);
+    this.fishing = { state: 'idle', timer: 0, bobber: null, baseY: 0 };
 
     this._buildPlots();
 
@@ -96,7 +99,12 @@ export class GardenScreen {
       onBuySeed: (type) => this._buySeed(type),
       onAction: () => this._keyboardInteract(),
       onBuyUpgrade: (id) => this._buyUpgrade(id),
+      onJump: () => this.avatar.jump(),
+      onFish: () => this._fish(),
+      onReset: () => this._resetGame(),
+      onWeather: () => this._cycleWeather(),
     });
+    this._lastWeather = null;
 
     recomputeMods(); // apply persisted upgrades
 
@@ -157,7 +165,11 @@ export class GardenScreen {
       if (MOVE.includes(k)) e.preventDefault();
       if (e.repeat) return;
       this.keys.add(k);
-      if (k === 'e' || k === ' ') this._keyboardInteract();
+      if (k === 'e') this._keyboardInteract();
+      else if (k === ' ') this.avatar.jump();
+      else if (k === 'f') this._fish();
+      else if (k === 'h') this._cycleWeather();
+      else if (k === 'escape') this._onEscape();
       else if (k === '1') this._selectSeed('rose');
       else if (k === '2') this._selectSeed('tulip');
       else if (k === '3') this._selectSeed('sunflower');
@@ -442,11 +454,146 @@ export class GardenScreen {
     }
   }
 
-  _floatCoins(plot, amount) {
-    const v = new THREE.Vector3(plot.position.x, 1.0, plot.position.z).project(this.camera);
+  _floatWorld(pos, text, color = '#8a5a1a') {
+    const v = pos.clone().project(this.camera);
     const x = (v.x * 0.5 + 0.5) * window.innerWidth;
     const y = (-v.y * 0.5 + 0.5) * window.innerHeight;
-    this.hud.floatText(x, y, `+${amount} 🪙`, '#8a5a1a');
+    this.hud.floatText(x, y, text, color);
+  }
+
+  _floatCoins(plot, amount) {
+    this._floatWorld(new THREE.Vector3(plot.position.x, 1.0, plot.position.z), `+${amount} 🪙`);
+  }
+
+  // ---------- fishing ----------
+  _fish() {
+    const f = this.fishing;
+    if (f.state === 'bite') {
+      this._catchFish();
+      return;
+    }
+    if (f.state !== 'idle') {
+      this.hud.toast('Sedang memancing... 🎣');
+      return;
+    }
+    const r = Math.hypot(this.avatar.position.x, this.avatar.position.z);
+    if (r < ISLAND.grassR - 1.5) {
+      this.hud.toast('Ke tepi pantai dulu untuk memancing 🎣');
+      this.app.audio?.play('click');
+      return;
+    }
+    this._spawnBobber();
+    f.state = 'casting';
+    f.timer = 2.5 + Math.random() * 3;
+    this.app.audio?.play('water');
+    this.hud.toast('Memancing... tunggu ikan 🎣');
+  }
+
+  _spawnBobber() {
+    const ax = this.avatar.position.x;
+    const az = this.avatar.position.z;
+    const len = Math.hypot(ax, az) || 1;
+    const bx = ax + (ax / len) * 3.5;
+    const bz = az + (az / len) * 3.5;
+    const b = new THREE.Group();
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), toon('#e23b2e'));
+    top.scale.y = 0.7;
+    addOutline(top, { thickness: 0.02 });
+    const bot = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), toon('#fbfbf5'));
+    bot.scale.y = 0.7;
+    bot.position.y = -0.12;
+    b.add(top, bot);
+    this.fishing.baseY = ISLAND.seaY + 0.15;
+    b.position.set(bx, this.fishing.baseY, bz);
+    this.scene.add(b);
+    this.fishing.bobber = b;
+  }
+
+  _removeBobber() {
+    const b = this.fishing.bobber;
+    if (!b) return;
+    this.scene.remove(b);
+    b.traverse((o) => {
+      if (o.isMesh) {
+        o.geometry?.dispose?.();
+        o.material?.dispose?.();
+      }
+    });
+    this.fishing.bobber = null;
+  }
+
+  _updateFishing(dt) {
+    const f = this.fishing;
+    if (f.state === 'idle') return;
+    const t = this.app.clock.elapsedTime;
+    if (f.bobber) {
+      const dip = f.state === 'bite' ? 0.18 : 0;
+      f.bobber.position.y = f.baseY + Math.sin(t * 3) * (f.state === 'bite' ? 0.05 : 0.12) - dip;
+    }
+    if (f.state === 'casting') {
+      f.timer -= dt;
+      if (f.timer <= 0) {
+        f.state = 'bite';
+        f.timer = 1.3; // reaction window
+        this.app.audio?.play('pop');
+        this.hud.toast('❗ Ikan menggigit! Tekan 🎣 / F lagi!');
+        if (this.particles && f.bobber) {
+          this.particles.burst(f.bobber.position.clone(), ['#bfe9ff', '#7fc7d8', '#ffffff'], 6);
+        }
+      }
+    } else if (f.state === 'bite') {
+      f.timer -= dt;
+      if (f.timer <= 0) this._missFish();
+    }
+  }
+
+  _catchFish() {
+    const f = this.fishing;
+    const coins = 5 + Math.floor(Math.random() * 16); // 5..20
+    state.addCoins(coins);
+    this.app.audio?.play('ding');
+    if (f.bobber) {
+      this.particles?.burst(f.bobber.position.clone(), ['#5fb6c9', '#dff3f6', '#ffffff'], 16);
+      this._floatWorld(f.bobber.position.clone().setY(f.baseY + 1), `+${coins} 🪙 🐟`);
+    }
+    this.hud.toast(`Dapat ikan! +${coins} 🪙 🐟`);
+    if (Math.random() < 0.3) {
+      const types = ['rose', 'tulip', 'sunflower', 'lily'];
+      const tt = types[Math.floor(Math.random() * types.length)];
+      state.addSeeds(tt, 1);
+      this.hud.toast(`Bonus bibit ${getFlower(tt).name}! 🌱`);
+    }
+    const done = state.missionEvent('earn', { amount: coins });
+    this._handleCompletions(done);
+    this._removeBobber();
+    f.state = 'idle';
+    this._afterAction();
+  }
+
+  _missFish() {
+    this.hud.toast('Ikan lepas 😅');
+    this.app.audio?.play('click');
+    this._removeBobber();
+    this.fishing.state = 'idle';
+  }
+
+  // ---------- pause / esc ----------
+  _onEscape() {
+    if (this.hud.anyPanelOpen()) this.hud.closeAllPanels();
+    else this.hud.togglePause();
+  }
+
+  _resetGame() {
+    state.reset();
+    recomputeMods();
+    this.app.sm.go('intro');
+  }
+
+  _cycleWeather() {
+    const s = this.weather.cycle();
+    this.hud.setWeatherIcon(s);
+    this._lastWeather = s;
+    this.app.audio?.play('click');
   }
 
   _afterAction() {
@@ -545,6 +692,11 @@ export class GardenScreen {
     this.butterflies?.update(dt, this.app.clock.elapsedTime, 1 - this.sky.nightLevel);
     this.seaLife?.update(dt);
     this.weather?.update(dt);
+    if (this.weather && this.weather.state !== this._lastWeather) {
+      this._lastWeather = this.weather.state;
+      this.hud.setWeatherIcon(this.weather.state);
+    }
+    this._updateFishing(dt);
     // rain or the auto-sprinkler keeps the garden watered (growth boost)
     const autoWet = this.weather?.isRaining ? 0.4 : mods.sprinkler > 0 ? 0.1 + 0.15 * mods.sprinkler : 0;
     if (autoWet > 0) {
@@ -575,6 +727,7 @@ export class GardenScreen {
     dom.removeEventListener('pointermove', this._onMove);
     window.removeEventListener('keydown', this._onKeyDown);
     window.removeEventListener('keyup', this._onKeyUp);
+    this._removeBobber();
     dom.style.cursor = 'default';
     this.controls?.dispose();
     // ambiance keeps playing across screens (still by the sea)
