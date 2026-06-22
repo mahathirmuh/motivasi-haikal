@@ -34,19 +34,23 @@ export class IntroScreen {
     await this._buildTitle();
     this._buildUI();
 
-    // Browsers block audio before a user gesture, so start music + sea ambiance
-    // on the first interaction anywhere on the intro (click/tap/key).
-    this._audioStarted = false;
+    // Try to autoplay music + sea ambiance right away. Browsers usually block
+    // audio until a user gesture, so we also resume on the first interaction
+    // anywhere (click/tap/scroll/key). On permissive setups it just plays.
+    this.app.audio?.init();
+    this.app.audio?.resume();
     this._startAudioOnce = () => {
-      if (this._audioStarted) return;
-      this._audioStarted = true;
-      this.app.audio?.init();
-      this.app.audio?.startMusic();
-      this.app.audio?.startAmbiance();
-      this._soundHint?.remove();
+      this.app.audio?.resume();
+      if (this.app.audio?.running) this._soundHint?.remove();
     };
     window.addEventListener('pointerdown', this._startAudioOnce);
     window.addEventListener('keydown', this._startAudioOnce);
+    window.addEventListener('touchstart', this._startAudioOnce, { passive: true });
+    window.addEventListener('wheel', this._startAudioOnce, { passive: true });
+    // if autoplay was allowed, drop the hint shortly after load
+    setTimeout(() => {
+      if (this.app.audio?.running) this._soundHint?.remove();
+    }, 400);
   }
 
   async _buildTitle() {
@@ -97,7 +101,7 @@ export class IntroScreen {
       kids.push(el('div', { class: 'intro-title-fallback', html: 'FLOWER<br>GARDEN' }));
     }
     const begin = el('button', { class: 'btn btn--primary', onClick: () => this._begin() }, 'BEGIN');
-    this._soundHint = el('div', { class: 'intro-hint', text: '🔊 klik di mana saja untuk musik' });
+    this._soundHint = el('div', { class: 'intro-hint', text: '🔊 klik bila musik belum terdengar' });
     const bottom = el('div', { class: 'intro-bottom' }, [
       el('div', { class: 'intro-hint', text: '🌊  by the Sea  ·  berkebun di tepi laut' }),
       begin,
@@ -134,6 +138,8 @@ export class IntroScreen {
   exit() {
     window.removeEventListener('pointerdown', this._startAudioOnce);
     window.removeEventListener('keydown', this._startAudioOnce);
+    window.removeEventListener('touchstart', this._startAudioOnce);
+    window.removeEventListener('wheel', this._startAudioOnce);
     // music + ambiance keep playing across screens
   }
 }

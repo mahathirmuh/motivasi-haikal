@@ -446,11 +446,11 @@ export class Avatar {
     this.parts.armR = makeArm(1);
 
     const headG = new THREE.Group();
-    headG.position.y = mon === 'pika' ? 0.8 * S : 0.7 * S;
+    headG.position.y = mon === 'jiggly' ? 0.7 * S : 0.8 * S;
     upper.add(headG);
     this.parts.headG = headG;
 
-    const headR = (mon === 'pika' ? 0.42 : 0.5) * S;
+    const headR = (mon === 'jiggly' ? 0.5 : 0.42) * S;
     const head = part(new THREE.SphereGeometry(headR, 18, 16), body);
     head.castShadow = true;
     headG.add(head);
@@ -527,6 +527,43 @@ export class Avatar {
       z3.position.set(-0.18 * S, 0.74 * S, 0);
       z3.rotation.z = 0.5;
       tail.add(z3);
+    } else if (mon === 'dedenne') {
+      // big round ears + cheeks + whiskers + cream belly + little tail
+      for (const side of [-1, 1]) {
+        const ear = part(new THREE.SphereGeometry(0.26 * S, 12, 10), body, { thickness: 0.014 });
+        ear.scale.set(1, 1, 0.3);
+        ear.position.set(side * headR * 0.75, headR * 0.9, -headR * 0.05);
+        ear.rotation.z = side * -0.2;
+        headG.add(ear);
+        const inner = new THREE.Mesh(new THREE.CircleGeometry(0.16 * S, 14), new THREE.MeshBasicMaterial({ color: tip }));
+        inner.position.set(side * headR * 0.75, headR * 0.9, -headR * 0.05 + 0.08 * S);
+        inner.rotation.z = side * -0.2;
+        headG.add(inner);
+        const cheek = new THREE.Mesh(new THREE.CircleGeometry(headR * 0.17, 12), new THREE.MeshBasicMaterial({ color: accent }));
+        cheek.position.set(side * headR * 0.6, -headR * 0.06, headR * 0.82);
+        headG.add(cheek);
+        for (let w = 0; w < 2; w++) {
+          const whisk = part(new THREE.CylinderGeometry(0.012 * S, 0.012 * S, 0.55 * S, 4), tip, { outline: false });
+          whisk.position.set(side * headR * 0.95, -headR * 0.02 - w * 0.09 * S, headR * 0.45);
+          whisk.rotation.z = Math.PI / 2;
+          whisk.rotation.y = side * 0.3;
+          headG.add(whisk);
+        }
+      }
+      // cream belly
+      const belly = part(new THREE.SphereGeometry(0.3 * S, 12, 10), '#f3e7c0', { thickness: 0.01 });
+      belly.scale.set(0.7, 0.9, 0.5);
+      belly.position.set(0, 0.4 * S, 0.28 * S);
+      upper.add(belly);
+      // little tail
+      const tail = new THREE.Group();
+      tail.position.set(0, 0.35 * S, -0.4 * S);
+      upper.add(tail);
+      this.parts.tail = tail;
+      const seg = part(new THREE.ConeGeometry(0.1 * S, 0.42 * S, 6), body, { thickness: 0.012 });
+      seg.rotation.x = -0.7;
+      seg.position.set(0, 0.12 * S, -0.08 * S);
+      tail.add(seg);
     } else {
       // jigglypuff: small pointed ears + forehead curl
       for (const side of [-1, 1]) {

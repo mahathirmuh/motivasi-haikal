@@ -8,6 +8,10 @@ import { Fireflies } from '../world/Fireflies.js';
 import { SeaLife } from '../world/SeaLife.js';
 import { Butterflies } from '../world/Butterflies.js';
 import { Weather } from '../world/Weather.js';
+import { Npc } from '../world/Npc.js';
+import { Pet } from '../world/Pet.js';
+import { MOTIVATION } from '../config/dialog.js';
+import { el, uiRoot } from '../utils/dom.js';
 import { addLights, addFog } from '../gfx/lighting.js';
 import { toon } from '../gfx/toon.js';
 import { addOutline } from '../gfx/outline.js';
@@ -57,6 +61,14 @@ export class GardenScreen {
     this.dayTime = 0.18; // start mid-morning
     this.sky.setDayNight(this.dayTime, this.lights);
     this.fishing = { state: 'idle', timer: 0, bobber: null, baseY: 0 };
+
+    // garden fairy (motivational NPC) + pet companion
+    this.npc = new Npc(this.scene, new THREE.Vector3(-7, 0, -3));
+    this.pet = new Pet(this.scene, new THREE.Vector3(2, 0, 7));
+    this._npcMsg = 0;
+    this._npcTipCd = 0;
+    this._npcBubble = el('div', { class: 'npc-bubble hidden', text: MOTIVATION[0] });
+    uiRoot().appendChild(this._npcBubble);
 
     this._buildPlots();
 
@@ -246,6 +258,11 @@ export class GardenScreen {
   _handleClick(e) {
     this._setPointer(e);
     this.raycaster.setFromCamera(this.pointer, this.camera);
+
+    if (this.npc && this.raycaster.intersectObject(this.npc.hit, false).length) {
+      this._talkNpc();
+      return;
+    }
 
     const plotHits = this.raycaster.intersectObjects(this.plotMeshes, false);
     if (plotHits.length) {
@@ -596,6 +613,37 @@ export class GardenScreen {
     this.app.audio?.play('click');
   }
 
+  // ---------- NPC ----------
+  _talkNpc() {
+    this._npcMsg = (this._npcMsg + 1) % MOTIVATION.length;
+    this._npcBubble.textContent = MOTIVATION[this._npcMsg];
+    this.app.audio?.play('click');
+    if (this._npcTipCd <= 0) {
+      this._npcTipCd = 25;
+      state.addCoins(5);
+      this.hud.toast('Hadiah semangat dari peri! +5 🪙');
+      this._refreshHUD();
+    }
+  }
+
+  _updateNpc(dt) {
+    if (this._npcTipCd > 0) this._npcTipCd -= dt;
+    const np = this.npc.position;
+    const d = Math.hypot(this.avatar.position.x - np.x, this.avatar.position.z - np.z);
+    if (d < 5) {
+      const v = new THREE.Vector3(np.x, this.npc.headY, np.z).project(this.camera);
+      if (v.z < 1) {
+        this._npcBubble.style.left = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
+        this._npcBubble.style.top = `${(-v.y * 0.5 + 0.5) * window.innerHeight}px`;
+        this._npcBubble.classList.remove('hidden');
+      } else {
+        this._npcBubble.classList.add('hidden');
+      }
+    } else {
+      this._npcBubble.classList.add('hidden');
+    }
+  }
+
   _afterAction() {
     this._persist();
     this._refreshHUD();
@@ -696,6 +744,9 @@ export class GardenScreen {
       this._lastWeather = this.weather.state;
       this.hud.setWeatherIcon(this.weather.state);
     }
+    this.npc?.update(dt, this.app.clock.elapsedTime);
+    this.pet?.update(dt, this.avatar.position);
+    this._updateNpc(dt);
     this._updateFishing(dt);
     // rain or the auto-sprinkler keeps the garden watered (growth boost)
     const autoWet = this.weather?.isRaining ? 0.4 : mods.sprinkler > 0 ? 0.1 + 0.15 * mods.sprinkler : 0;

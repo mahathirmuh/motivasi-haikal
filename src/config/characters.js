@@ -98,6 +98,15 @@ export const PRESETS = [
     accent: '#3a6ea5', // eyes
     tip: '#ef7a9b',
   },
+  {
+    id: 'dedenne',
+    name: 'Dedenne',
+    kind: 'pokemon',
+    mon: 'dedenne',
+    body: '#e0913f',
+    accent: '#d8702a', // cheeks
+    tip: '#5a3a1f', // ear insides / whiskers
+  },
   // To use a real .glb (e.g. a rigged Mixamo character) instead of a procedural
   // body, add a preset like the following. Avatar will load it and play its
   // walk/idle clips, falling back to the placeholder if it can't be loaded:

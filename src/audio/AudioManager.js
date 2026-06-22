@@ -77,6 +77,22 @@ export class AudioManager {
     }
   }
 
+  get running() {
+    return !!(Howler.ctx && Howler.ctx.state === 'running');
+  }
+
+  /** Best-effort: resume the audio context (after a gesture) and play music + ambiance. */
+  resume() {
+    if (!this.ready) this.init();
+    try {
+      if (Howler.ctx && Howler.ctx.state !== 'running') Howler.ctx.resume();
+    } catch (e) {
+      /* ignore */
+    }
+    this.startMusic();
+    this.startAmbiance();
+  }
+
   /** Start the seaside soundscape (waves + gentle music). */
   startGarden() {
     this.startAmbiance();

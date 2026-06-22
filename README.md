@@ -21,8 +21,10 @@ real `.glb` models / audio later.
 - **Character customization**: gender toggle (perempuan / laki-laki / netral)
   that changes the body, plus appearance presets with arrow switching and a
   rotating 3D preview — four humanoids, two creatures (**Dinosaur & Godzilla**),
-  and two Pokémon (**Pikachu & Jigglypuff**), each with their own procedural body
-  and gait. Optional name. Saved to `localStorage`.
+  and three Pokémon (**Pikachu, Jigglypuff & Dedenne**), each with their own
+  procedural body and gait. Optional name. Saved to `localStorage`.
+- **Garden fairy & pet**: a fairy NPC gives Haikal motivational messages (and the
+  odd coin), and a little chick hops along behind you.
 - **Seaside world**: a lightweight **toon ocean** (vertex-displaced waves +
   animated shoreline foam), a grass plateau ringed by sand and a low cliff,
   palm trees, rocks, drifting clouds, seagulls, and a full **day/night cycle**
