@@ -504,8 +504,8 @@ export class GardenScreen {
       return;
     }
     const r = Math.hypot(this.avatar.position.x, this.avatar.position.z);
-    if (r < ISLAND.grassR - 1.5) {
-      this.hud.toast('Ke tepi pantai dulu untuk memancing 🎣');
+    if (r < ISLAND.grassR - 5) {
+      this.hud.toast('Jalan ke tepi pantai dulu untuk memancing 🎣');
       this.app.audio?.play('click');
       return;
     }
