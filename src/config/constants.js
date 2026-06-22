@@ -50,6 +50,18 @@ export const ISLAND = {
   walkR: 13.5, // avatar can't walk past this (stays on grass/sand)
 };
 
+// A smaller second island, far out at sea — a genuine voyage by boat.
+export const ISLAND2 = {
+  x: 40,
+  z: -16,
+  grassR: 5.5,
+  sandR: 7.5,
+  cliffBottom: -3.0,
+};
+
+// How far the boat (and click-to-move) may roam from the origin.
+export const SEA_MAX = 52;
+
 // Avatar movement
 export const AVATAR = {
   speed: 4.2, // units / second

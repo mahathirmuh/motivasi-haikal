@@ -22,7 +22,7 @@ import { Plot } from '../entities/Plot.js';
 import { HUD } from '../ui/HUD.js';
 import { Particles } from '../gfx/Particles.js';
 import { state } from '../core/state.js';
-import { GRID, ISLAND, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH, SHOP_PRICES, plotUnlockCost } from '../config/constants.js';
+import { GRID, ISLAND, ISLAND2, SEA_MAX, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH, SHOP_PRICES, plotUnlockCost } from '../config/constants.js';
 import { getFlower, FLOWER_IDS } from '../config/flowers.js';
 import { getPreset } from '../config/characters.js';
 import { ACHIEVEMENTS } from '../config/achievements.js';
@@ -55,7 +55,14 @@ export class GardenScreen {
     this.sky = new Sky(this.scene);
     this.sea = new Sea(this.scene);
     new Island(this.scene);
+    new Island(this.scene, ISLAND2);
     this.scenery = new Scenery(this.scene);
+    this._islands = [
+      { x: 0, z: 0, r: ISLAND.sandR },
+      { x: ISLAND2.x, z: ISLAND2.z, r: ISLAND2.sandR },
+    ];
+    this._orchidCd = 0;
+    this._buildIsland2Decor();
     this.particles = new Particles(this.scene);
     this.fireflies = new Fireflies(this.scene);
     this.butterflies = new Butterflies(this.scene);
@@ -321,10 +328,9 @@ export class GardenScreen {
       if (gh.length) {
         const p = gh[0].point;
         const r = Math.hypot(p.x, p.z);
-        const max = 34;
-        if (r > max) {
-          p.x *= max / r;
-          p.z *= max / r;
+        if (r > SEA_MAX) {
+          p.x *= SEA_MAX / r;
+          p.z *= SEA_MAX / r;
         }
         this._boatTarget = new THREE.Vector3(p.x, 0, p.z);
         this._boatDir.set(0, 0, 0);
@@ -352,7 +358,7 @@ export class GardenScreen {
     const groundHits = this.raycaster.intersectObject(this.pickPlane, false);
     if (groundHits.length) {
       const p = groundHits[0].point;
-      const max = ISLAND.sandR + 4; // allow walking to the shore (and a bit into the sea)
+      const max = SEA_MAX; // generous: lets you reach the 2nd island; swim/drown guards the deep sea
       const r = Math.hypot(p.x, p.z);
       if (r > max) {
         p.x *= max / r;
@@ -609,11 +615,20 @@ export class GardenScreen {
     this.hud.toast('Memancing dibatalkan');
   }
 
-  // ---------- water: swim near the shore, then drown if too far ----------
+  /** Smallest distance to any island's shoreline (negative = on land). */
+  _nearestLandMargin() {
+    let best = Infinity;
+    for (const isl of this._islands) {
+      const d = Math.hypot(this.avatar.position.x - isl.x, this.avatar.position.z - isl.z) - isl.r;
+      if (d < best) best = d;
+    }
+    return best;
+  }
+
+  // ---------- water: swim near any shore, then drown if too far ----------
   _updateWater(dt) {
     const SWIM_TIME = 6;
-    const LAND_R = ISLAND.sandR; // beyond this you're in the water
-    const SWIM_MAX = ISLAND.sandR + 7; // too far -> instant drown
+    const SWIM_RANGE = 7; // how far from a shore you can still swim
 
     if (this._drowning) {
       this._drownT += dt;
@@ -628,13 +643,12 @@ export class GardenScreen {
       return;
     }
 
-    const p = this.avatar.root.position;
-    const r = Math.hypot(p.x, p.z);
-    if (r > SWIM_MAX) {
+    const margin = this._nearestLandMargin();
+    if (margin > SWIM_RANGE) {
       this._startDrown();
       return;
     }
-    if (r > LAND_R) {
+    if (margin > 0.4) {
       // swimming — slower, floats at the surface, breath runs down
       if (!this._swimming) {
         this._swimming = true;
@@ -710,17 +724,27 @@ export class GardenScreen {
 
   _leaveBoat() {
     const b = this.boat.position;
-    const r = Math.hypot(b.x, b.z);
-    if (r > ISLAND.sandR + 1.5) {
-      this.hud.toast('Dekati pantai untuk turun ⛵');
+    let isl = null;
+    let best = Infinity;
+    for (const i of this._islands) {
+      const e = Math.hypot(b.x - i.x, b.z - i.z) - i.r;
+      if (e < best) {
+        best = e;
+        isl = i;
+      }
+    }
+    if (best > 2.0) {
+      this.hud.toast('Dekati pulau untuk turun ⛵');
       return;
     }
     this._boating = false;
     this._boatDir.set(0, 0, 0);
-    // step out onto the nearest land
-    const land = ISLAND.sandR - 2;
-    const k = r > 0.001 ? land / r : 0;
-    this.avatar.root.position.set(b.x * k, 0, b.z * k);
+    // step out onto that island's edge
+    const dx = b.x - isl.x;
+    const dz = b.z - isl.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const land = isl.r - 1.5;
+    this.avatar.root.position.set(isl.x + (dx / d) * land, 0, isl.z + (dz / d) * land);
     this.avatar.root.position.y = 0;
     this.avatar.airY = 0;
     this.avatar.vy = 0;
@@ -748,6 +772,71 @@ export class GardenScreen {
     this.hud.setCompass(Math.atan2(localR, localF), dist);
   }
 
+  _buildIsland2Decor() {
+    const g = new THREE.Group();
+    g.position.set(ISLAND2.x, 0, ISLAND2.z);
+    this.scene.add(g);
+    const T = (geo, c, t = 0.02) => {
+      const m = new THREE.Mesh(geo, toon(c));
+      m.castShadow = true;
+      addOutline(m, { thickness: t });
+      return m;
+    };
+    for (const [tx, tz] of [[-2.5, 1.6], [2.3, -1.7]]) {
+      const trunk = T(new THREE.CylinderGeometry(0.18, 0.24, 1.6, 8), '#7a4a2b');
+      trunk.position.set(tx, 0.8, tz);
+      g.add(trunk);
+      const fol = T(new THREE.ConeGeometry(1.1, 2.0, 8), '#57a83f');
+      fol.position.set(tx, 2.3, tz);
+      g.add(fol);
+    }
+    for (const [rx, rz] of [[1.6, 2.4], [-2.1, -2.0]]) {
+      const rock = T(new THREE.DodecahedronGeometry(0.5, 0), '#b9b3a6');
+      rock.position.set(rx, 0.25, rz);
+      g.add(rock);
+    }
+    // signpost
+    const post = T(new THREE.CylinderGeometry(0.08, 0.08, 1.4, 6), '#6b4a2b', 0.012);
+    post.position.set(0, 0.7, 3.0);
+    g.add(post);
+    const board = T(new THREE.BoxGeometry(1.3, 0.5, 0.1), '#a06a36', 0.014);
+    board.position.set(0, 1.2, 3.0);
+    g.add(board);
+    const orchidIco = T(new THREE.SphereGeometry(0.12, 8, 8), '#c77dff', 0.01);
+    orchidIco.position.set(0, 1.2, 3.06);
+    g.add(orchidIco);
+    // wild orchid bush (renewable orchid seeds)
+    const bush = T(new THREE.SphereGeometry(0.6, 10, 8), '#4f8f2c');
+    bush.scale.y = 0.7;
+    bush.position.y = 0.4;
+    g.add(bush);
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const bloom = T(new THREE.SphereGeometry(0.15, 8, 8), i % 2 ? '#e9c6ff' : '#c77dff', 0.01);
+      bloom.position.set(Math.cos(a) * 0.45, 0.65 + Math.sin(a) * 0.1, Math.sin(a) * 0.45);
+      g.add(bloom);
+    }
+    this._orchidBushPos = new THREE.Vector3(ISLAND2.x, 0, ISLAND2.z);
+  }
+
+  _checkOrchidBush(dt) {
+    if (this._orchidCd > 0) this._orchidCd -= dt;
+    const p = this._orchidBushPos;
+    if (!p || this._boating) return;
+    const dx = this.avatar.position.x - p.x;
+    const dz = this.avatar.position.z - p.z;
+    if (dx * dx + dz * dz < 2.2 * 2.2 && this._orchidCd <= 0) {
+      this._orchidCd = 12;
+      state.addSeeds('orchid', 1);
+      state.save();
+      this._awardXp(6);
+      this.app.audio?.play('pop');
+      this.particles?.burst(new THREE.Vector3(p.x, 1.0, p.z), ['#c77dff', '#e9c6ff', '#ffffff'], 12);
+      this.hud.toast('Memetik anggrek liar! +1 bibit 🪻');
+      this._refreshHUD();
+    }
+  }
+
   _checkTreasure() {
     const tr = this.seaLife?.treasure;
     if (!tr) return;
@@ -773,8 +862,8 @@ export class GardenScreen {
   }
 
   _updateBoat(dt) {
-    const BOAT_SPEED = 6;
-    const MAX_R = 34;
+    const BOAT_SPEED = 7;
+    const MAX_R = SEA_MAX;
     const boat = this.boat.group;
     // move by keys or toward a clicked target
     let mx = 0;
@@ -1166,6 +1255,7 @@ export class GardenScreen {
     this.butterflies?.update(dt, this.app.clock.elapsedTime, 1 - this.sky.nightLevel);
     this.seaLife?.update(dt);
     this._checkTreasure();
+    this._checkOrchidBush(dt);
     this._updateCompass();
     this.weather?.update(dt);
     if (this.weather && this.weather.state !== this._lastWeather) {

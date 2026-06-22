@@ -31,6 +31,9 @@ real `.glb` models / audio later.
   glide along the surface, **dolphins** leap in the distance, and a **floating
   treasure** drifts about — a top-of-screen **compass** points the way and shows
   the distance; sail up to it for a coin reward (then it reappears somewhere new).
+- **Second island**: a small islet sits far across the sea (too far to swim — you'll
+  drown trying). Sail there and disembark to explore; it has a **wild orchid bush**
+  you can pick for rare orchid seeds.
 - **Levels & XP**: gardening and fishing earn XP; level up for a coin bonus and a
   little celebration. Your level + XP bar show top-left, and your name floats
   above your character.
