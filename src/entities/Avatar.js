@@ -87,8 +87,11 @@ export class Avatar {
     this.vy = 0; // vertical velocity (jump)
     this.airY = 0; // height above ground
     this.speedMul = 1; // movement speed multiplier (e.g. slower while swimming)
-    this.obstacles = null; // solid props to slide around: [{x,z,r}]
+    this.obstacles = null; // solid props to slide around / stand on: [{x,z,r,top?}]
     this.bodyR = 0.35; // collision radius of the avatar
+    this.grounded = true; // resting on the ground or a rock top
+    this.jumpsUsed = 0; // jumps since last grounded (enables double jump)
+    this.maxJumps = 2;
     // optional GLTF model + animation
     this.mixer = null;
     this.walkAction = null;
@@ -609,13 +612,13 @@ export class Avatar {
     this.moveDir.set(0, 0, 0);
   }
 
-  /** Hop, if currently on the ground. Returns true if it actually jumped. */
+  /** Hop. A second press while airborne does a double jump. Returns true if it jumped. */
   jump() {
-    if (this.airY <= 0.001) {
-      this.vy = 5.8;
-      return true;
-    }
-    return false;
+    if (this.jumpsUsed >= this.maxJumps) return false;
+    this.vy = 5.8;
+    this.jumpsUsed++;
+    this.grounded = false;
+    return true;
   }
 
   get isAirborne() {
@@ -627,12 +630,15 @@ export class Avatar {
   }
 
   /** Push out of any solid prop so we can't walk through it; correcting only the
-   *  radial penetration leaves tangential motion intact, so we slide around it. */
+   *  radial penetration leaves tangential motion intact, so we slide around it.
+   *  If our feet are at/above a prop's top, we don't block — so a (double) jump
+   *  can carry us up and over to stand on top of it. */
   _resolveObstacles() {
     const list = this.obstacles;
     if (!list || !list.length) return;
     const p = this.root.position;
     for (const o of list) {
+      if (o.top != null && p.y >= o.top - 0.15) continue; // clearing the top
       const dx = p.x - o.x;
       const dz = p.z - o.z;
       const min = o.r + this.bodyR;
@@ -647,6 +653,24 @@ export class Avatar {
         p.x += min; // dead-centre: nudge out along +x
       }
     }
+  }
+
+  /** Height of whatever we're standing on at the current xz (0 = island ground,
+   *  or a rock's top if we're over its footprint). Palms have no `top` -> walls. */
+  _supportHeight() {
+    let s = 0;
+    const list = this.obstacles;
+    if (list) {
+      const px = this.root.position.x;
+      const pz = this.root.position.z;
+      for (const o of list) {
+        if (o.top == null) continue;
+        const dx = px - o.x;
+        const dz = pz - o.z;
+        if (dx * dx + dz * dz <= o.r * o.r) s = Math.max(s, o.top);
+      }
+    }
+    return s;
   }
 
   update(dt, audio = null) {
@@ -707,16 +731,23 @@ export class Avatar {
       this.parts.tail.rotation.y = Math.sin(this.gait * 0.5 + this.time * 1.6) * (moving01 ? 0.35 : 0.12);
     }
 
-    // jump physics (vertical hop of the whole avatar)
-    if (this.vy !== 0 || this.airY > 0) {
-      this.vy -= 16 * dt;
-      this.airY += this.vy * dt;
-      if (this.airY <= 0) {
-        this.airY = 0;
-        this.vy = 0;
+    // gravity + landing: rest on the island ground, or on top of a rock we
+    // jumped onto. Always integrated so walking off a ledge makes us fall.
+    const support = this._supportHeight();
+    this.vy -= 16 * dt;
+    let y = this.root.position.y + this.vy * dt;
+    if (y <= support) {
+      y = support;
+      this.vy = 0;
+      if (!this.grounded) {
+        this.grounded = true;
+        this.jumpsUsed = 0;
       }
-      this.root.position.y = this.airY;
+    } else {
+      this.grounded = false;
     }
+    this.root.position.y = y;
+    this.airY = y - support;
 
     // GLTF animation (if a real model was loaded): crossfade walk/idle
     if (this.mixer) {

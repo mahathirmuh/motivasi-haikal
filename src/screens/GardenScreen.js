@@ -119,8 +119,9 @@ export class GardenScreen {
     this.avatar.root.position.set(0, 0, 6);
     this.avatar.root.rotation.y = Math.PI; // face the garden
     this.avatar._faceTarget = Math.PI;
-    // solid props the avatar slides around instead of phasing through
+    // solid props the avatar slides around (and can jump on top of)
     this.avatar.obstacles = [...this.scenery.obstacles, ...(this._island2Obstacles || [])];
+    this.pet.obstacles = this.avatar.obstacles; // the chick can't walk through rocks either
     this.scene.add(this.avatar.root);
 
     // invisible ground for movement picking
@@ -634,7 +635,10 @@ export class GardenScreen {
 
   _tryJump() {
     if (this._swimming || this._drowning || this._boating || this._isFishing()) return;
-    if (this.avatar.jump()) this.app.audio?.play('jump');
+    if (this.avatar.jump()) {
+      this.app.audio?.play('jump');
+      this.pet?.jump(); // the chick hops along with you
+    }
   }
 
   _cancelFishing() {
@@ -716,7 +720,7 @@ export class GardenScreen {
     this.avatar.stop();
     this._cancelFishing();
     this.hud.setBreath(false);
-    this.app.audio?.play('water');
+    this.app.audio?.play('drown');
     this.particles?.bubbles(new THREE.Vector3(this.avatar.position.x, ISLAND.seaY + 0.3, this.avatar.position.z), 10);
     this.hud.toast('Byuur! 🌊 Kembali ke pulau...');
   }
@@ -730,6 +734,8 @@ export class GardenScreen {
     this.avatar._faceTarget = Math.PI;
     this.avatar.vy = 0;
     this.avatar.airY = 0;
+    this.avatar.grounded = true;
+    this.avatar.jumpsUsed = 0;
     this.avatar.stop();
     this.hud.setBreath(false);
   }
@@ -785,6 +791,8 @@ export class GardenScreen {
     this.avatar.root.position.y = 0;
     this.avatar.airY = 0;
     this.avatar.vy = 0;
+    this.avatar.grounded = true;
+    this.avatar.jumpsUsed = 0;
     this.avatar.stop();
     this.app.audio?.play('step');
     this.hud.toast('Turun dari perahu 🏝️');
@@ -1209,7 +1217,7 @@ export class GardenScreen {
       const rock = T(new THREE.DodecahedronGeometry(0.5, 0), '#b9b3a6');
       rock.position.set(rx, 0.25, rz);
       g.add(rock);
-      this._island2Obstacles.push({ x: ISLAND2.x + rx, z: ISLAND2.z + rz, r: 0.4 });
+      this._island2Obstacles.push({ x: ISLAND2.x + rx, z: ISLAND2.z + rz, r: 0.4, top: 0.6 });
     }
     // signpost
     const post = T(new THREE.CylinderGeometry(0.08, 0.08, 1.4, 6), '#6b4a2b', 0.012);

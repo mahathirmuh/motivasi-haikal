@@ -2,7 +2,7 @@
 // so no external audio files are required.
 import { Howl, Howler } from 'howler';
 import { state } from '../core/state.js';
-import { sfxClick, sfxStep, sfxWater, sfxDing, sfxPop, sfxJump, sfxThunder, sfxRoar, musicLoop, ambianceLoop } from './synth.js';
+import { sfxClick, sfxStep, sfxWater, sfxDing, sfxPop, sfxJump, sfxThunder, sfxRoar, sfxDrown, musicLoop, ambianceLoop } from './synth.js';
 
 export class AudioManager {
   constructor() {
@@ -29,6 +29,7 @@ export class AudioManager {
       jump: mk(sfxJump(), 0.4),
       thunder: mk(sfxThunder(), 0.5),
       roar: mk(sfxRoar(), 0.55),
+      drown: mk(sfxDrown(), 0.6),
     };
     this.music = new Howl({ src: [musicLoop()], format: ['wav'], loop: true, volume: 0.34 });
     this.ambiance = new Howl({ src: [ambianceLoop()], format: ['wav'], loop: true, volume: 0.7 });

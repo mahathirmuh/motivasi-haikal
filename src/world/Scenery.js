@@ -66,16 +66,19 @@ function makePalm() {
 }
 
 function makeRock(scale) {
+  const sy = rand(0.6, 0.9);
   const m = new THREE.Mesh(
     new THREE.DodecahedronGeometry(scale, 0),
     toon(Math.random() < 0.5 ? COLORS.rock : COLORS.rockDark, { flatShading: true })
   );
   m.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
   m.position.y = scale * 0.45;
-  m.scale.y = rand(0.6, 0.9);
+  m.scale.y = sy;
   m.castShadow = true;
   m.receiveShadow = true;
   addOutline(m, { thickness: 0.025 });
+  // approx height of the top surface you can stand on after a jump
+  m.userData.standTop = scale * 0.45 + scale * 0.72;
   return m;
 }
 
@@ -195,7 +198,7 @@ export class Scenery {
       r.position.x = x;
       r.position.z = z;
       this.group.add(r);
-      this.obstacles.push({ x, z, r: scale * 0.78 });
+      this.obstacles.push({ x, z, r: scale * 0.78, top: r.userData.standTop });
     }
 
     // grass tufts

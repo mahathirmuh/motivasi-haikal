@@ -24,7 +24,8 @@ real `.glb` models / audio later.
   and three Pokémon (**Pikachu, Jigglypuff & Dedenne**), each with their own
   procedural body and gait. Optional name. Saved to `localStorage`.
 - **Garden fairy & pet**: a fairy NPC gives Haikal motivational messages (and the
-  odd coin), and a little chick named **Intan** hops along behind you.
+  odd coin), and a little chick named **Intan** hops along behind you — she slides
+  around the rocks instead of through them, and hops whenever you jump.
 - **Sailing**: a boat is docked at the shore — press `E` next to it (or click it)
   to set sail across the open sea, and `E` near the beach to step off. Wander too
   far on foot and you'll swim, then drown and respawn. Out on the water, fish
@@ -104,8 +105,10 @@ Requires Node 18+.
   🌦️, upgrades 🔧, achievements 🏆, album 🏵️, shop 🛒, sound 🔊, customize 👕.
 
 **Jump & fishing**
-- Press `Space` to **jump**. Walk to the beach edge and press `F` to **fish** —
-  wait for the bite, then press again to reel in coins (and sometimes a seed).
+- Press `Space` to **jump** — press it again in mid-air for a **double jump**,
+  which is high enough to **land on top of the rocks** and stand on them (the
+  chick hops along too). Walk to the beach edge and press `F` to **fish** — wait
+  for the bite, then press again to reel in coins (and sometimes a seed).
 
 **Keyboard shortcuts**
 

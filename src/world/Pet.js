@@ -48,6 +48,41 @@ export class Pet {
     scene.add(this.group);
     this.hop = 0;
     this.spd = 0; // eased ground speed (smooth accel/decel)
+    this.obstacles = null; // solid props to slide around: [{x,z,r}]
+    this.bodyR = 0.3; // collision radius of the chick
+    this.vy = 0; // jump velocity
+    this.airY = 0; // jump height above ground
+  }
+
+  /** Little hop, if on the ground. Returns true if it jumped. */
+  jump() {
+    if (this.airY <= 0.001) {
+      this.vy = 4.8;
+      return true;
+    }
+    return false;
+  }
+
+  /** Push out of any solid prop so the chick can't waddle through it. */
+  _resolveObstacles() {
+    const list = this.obstacles;
+    if (!list || !list.length) return;
+    const p = this.group.position;
+    for (const o of list) {
+      const dx = p.x - o.x;
+      const dz = p.z - o.z;
+      const min = o.r + this.bodyR;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= min * min) continue;
+      if (d2 > 1e-6) {
+        const d = Math.sqrt(d2);
+        const push = (min - d) / d;
+        p.x += dx * push;
+        p.z += dz * push;
+      } else {
+        p.x += min; // dead-centre: nudge out along +x
+      }
+    }
   }
 
   /** Follow `target` (avatar position), keeping a small gap; hop while moving. */
@@ -73,11 +108,22 @@ export class Pet {
       // Turn to face travel direction, damped so it never snaps or jitters.
       this.group.rotation.y = dampAngle(this.group.rotation.y, Math.atan2(dx, dz), 10, dt);
     }
+    this._resolveObstacles(); // can't waddle through rocks/palm trunks
 
     // Hop amplitude + frequency blend with the eased speed, so the bounce grows
     // and fades smoothly instead of popping between walk/idle.
     const m = clamp(this.spd / 4, 0, 1);
     this.hop += dt * (3 + 10 * m);
-    pos.y = Math.abs(Math.sin(this.hop)) * (0.04 + 0.16 * m);
+    const bounce = Math.abs(Math.sin(this.hop)) * (0.04 + 0.16 * m);
+    // jump arc (when hopping along with the player), on top of the walk bounce
+    if (this.vy !== 0 || this.airY > 0) {
+      this.vy -= 16 * dt;
+      this.airY += this.vy * dt;
+      if (this.airY <= 0) {
+        this.airY = 0;
+        this.vy = 0;
+      }
+    }
+    pos.y = bounce + this.airY;
   }
 }

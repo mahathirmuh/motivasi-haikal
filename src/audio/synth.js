@@ -193,6 +193,28 @@ export function sfxRoar() {
   return encodeWav(out);
 }
 
+export function sfxDrown() {
+  // a watery "glug" that falls in pitch, with bubbling underneath — plays when
+  // the avatar sinks under the sea.
+  const dur = 0.95;
+  const n = Math.ceil(dur * SR);
+  const out = new Float32Array(n);
+  let phase = 0;
+  let lp = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const f = 520 - 360 * (t / dur); // falling gurgle 520 -> 160 Hz
+    phase += (2 * Math.PI * f) / SR;
+    const gurgle = Math.sin(phase) * (0.6 + 0.4 * Math.sin(2 * Math.PI * 8 * t)); // wobble
+    const w = Math.random() * 2 - 1;
+    lp += (w - lp) * 0.08;
+    const bubbles = lp * (0.4 + 0.35 * Math.sin(2 * Math.PI * 6 * t));
+    const envv = Math.min(1, t / 0.02) * Math.exp(-t * 1.5);
+    out[i] = (gurgle * 0.17 + bubbles * 0.24) * envv;
+  }
+  return encodeWav(out);
+}
+
 export function sfxJump() {
   // quick low->high "boing"
   return encodeWav(
