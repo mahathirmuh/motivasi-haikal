@@ -35,10 +35,16 @@ export class App {
   _tick() {
     const dt = Math.min(this.clock.getDelta(), 0.05); // clamp big frame gaps
     const elapsed = this.clock.elapsedTime;
-    this.sm.update(dt, elapsed);
-    const screen = this.sm.current;
-    if (screen && screen.scene && screen.camera) {
-      this.renderer.render(screen.scene, screen.camera);
+    // Never let a single bad frame throw out of the animation loop — that would
+    // stop setAnimationLoop from re-scheduling and freeze the game for good.
+    try {
+      this.sm.update(dt, elapsed);
+      const screen = this.sm.current;
+      if (screen && screen.scene && screen.camera) {
+        this.renderer.render(screen.scene, screen.camera);
+      }
+    } catch (e) {
+      console.error('[frame] update/render error (loop continues):', e);
     }
   }
 

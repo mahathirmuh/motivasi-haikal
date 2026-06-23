@@ -676,7 +676,10 @@ export class GardenScreen {
       this._bubbleT = (this._bubbleT || 0) + dt;
       if (this._bubbleT > 0.5) {
         this._bubbleT = 0;
-        this.particles?.bubbles(new THREE.Vector3(p.x, ISLAND.seaY + 0.3, p.z), 2);
+        this.particles?.bubbles(
+          new THREE.Vector3(this.avatar.position.x, ISLAND.seaY + 0.3, this.avatar.position.z),
+          2
+        );
       }
       if (this._breath <= 0) this._startDrown();
     } else if (this._swimming) {
