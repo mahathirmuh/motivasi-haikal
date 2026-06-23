@@ -21,6 +21,7 @@ function freshState() {
     harvests: 0,
     coinsEarned: 0, // cumulative (never decreases when spending)
     plantedTypes: [],
+    discoveredIsland2: false,
     // dynamic, rotating missions (array of mission objects)
     missions: generateMissions(MISSION_COUNT),
     // serialized garden: { [plotIndex]: {type, stage, progress, wet} }

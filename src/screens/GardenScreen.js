@@ -144,7 +144,14 @@ export class GardenScreen {
       onReset: () => this._resetGame(),
       onWeather: () => this._cycleWeather(),
       onUiSound: () => this.app.audio?.play('click'),
+      onCompass: () => this._cycleCompass(),
     });
+    this._compassModes = [
+      { key: 'treasure', icon: '🧰', name: 'Harta karun' },
+      { key: 'island', icon: '🏝️', name: 'Pulau seberang' },
+      { key: 'home', icon: '🏡', name: 'Kebun (rumah)' },
+    ];
+    this._compassMode = 0;
     this._lastWeather = null;
 
     recomputeMods(); // apply persisted upgrades
@@ -218,6 +225,7 @@ export class GardenScreen {
       else if (k === '5') this._selectSeed('orchid');
       else if (k === 'b') this.hud.toggleShop();
       else if (k === 'g') this.hud.toggleAlbum();
+      else if (k === 'j') this._cycleCompass();
       else if (k === 't') this.hud.toggleAch();
       else if (k === 'u') this.hud.toggleUpg();
       else if (k === 'm') this.hud.setMuted(this.app.audio?.toggleMute());
@@ -753,15 +761,29 @@ export class GardenScreen {
     this.hud.toast('Turun dari perahu 🏝️');
   }
 
-  _updateCompass() {
+  _cycleCompass() {
+    this._compassMode = (this._compassMode + 1) % this._compassModes.length;
+    this.app.audio?.play('click');
+    this.hud.toast(`Kompas → ${this._compassModes[this._compassMode].name}`);
+  }
+
+  _compassTarget() {
+    const mode = this._compassModes[this._compassMode];
+    if (mode.key === 'island') return { x: ISLAND2.x, z: ISLAND2.z, icon: mode.icon };
+    if (mode.key === 'home') return { x: 0, z: 0, icon: mode.icon };
     const tr = this.seaLife?.treasure;
-    if (!tr || !this.hud) return;
+    return { x: tr ? tr.position.x : 0, z: tr ? tr.position.z : 0, icon: mode.icon };
+  }
+
+  _updateCompass() {
+    if (!this.hud) return;
+    const tgt = this._compassTarget();
     const ax = this.avatar.position.x;
     const az = this.avatar.position.z;
-    const dx = tr.position.x - ax;
-    const dz = tr.position.z - az;
+    const dx = tgt.x - ax;
+    const dz = tgt.z - az;
     const dist = Math.hypot(dx, dz);
-    // camera-relative angle: 0 = treasure straight ahead (arrow points up)
+    // camera-relative angle: 0 = target straight ahead (arrow points up)
     let fx = ax - this.camera.position.x;
     let fz = az - this.camera.position.z;
     const fl = Math.hypot(fx, fz) || 1;
@@ -769,7 +791,21 @@ export class GardenScreen {
     fz /= fl;
     const localF = dx * fx + dz * fz;
     const localR = dx * -fz + dz * fx;
-    this.hud.setCompass(Math.atan2(localR, localF), dist);
+    this.hud.setCompass(Math.atan2(localR, localF), dist, tgt.icon);
+  }
+
+  _checkDiscovery() {
+    if (state.data.discoveredIsland2) return;
+    const d = Math.hypot(this.avatar.position.x - ISLAND2.x, this.avatar.position.z - ISLAND2.z);
+    if (d < ISLAND2.sandR) {
+      state.data.discoveredIsland2 = true;
+      state.addCoins(30);
+      this._awardXp(20);
+      this.app.audio?.play('ding');
+      this.particles?.burst(new THREE.Vector3(this.avatar.position.x, 1.4, this.avatar.position.z), ['#ffd166', '#c77dff', '#ffffff'], 24);
+      this.hud.toast('🏝️ Pulau Rahasia ditemukan! +30 🪙');
+      this._refreshHUD();
+    }
   }
 
   _buildIsland2Decor() {
@@ -1256,6 +1292,7 @@ export class GardenScreen {
     this.seaLife?.update(dt);
     this._checkTreasure();
     this._checkOrchidBush(dt);
+    this._checkDiscovery();
     this._updateCompass();
     this.weather?.update(dt);
     if (this.weather && this.weather.state !== this._lastWeather) {

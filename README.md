@@ -33,7 +33,9 @@ real `.glb` models / audio later.
   the distance; sail up to it for a coin reward (then it reappears somewhere new).
 - **Second island**: a small islet sits far across the sea (too far to swim — you'll
   drown trying). Sail there and disembark to explore; it has a **wild orchid bush**
-  you can pick for rare orchid seeds.
+  you can pick for rare orchid seeds, and finding it the first time gives a bonus.
+- **Compass targets**: click the compass (or press `J`) to point it at the treasure
+  🧰, the far island 🏝️, or back home 🏡 — handy for finding your way back.
 - **Levels & XP**: gardening and fishing earn XP; level up for a coin bonus and a
   little celebration. Your level + XP bar show top-left, and your name floats
   above your character.

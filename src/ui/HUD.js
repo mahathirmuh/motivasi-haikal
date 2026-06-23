@@ -7,7 +7,7 @@ import { ACHIEVEMENTS } from '../config/achievements.js';
 import { UPGRADES, upgradeCost } from '../config/upgrades.js';
 
 export class HUD {
-  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction, onBuyUpgrade, onJump, onFish, onReset, onWeather, onUiSound }) {
+  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction, onBuyUpgrade, onJump, onFish, onReset, onWeather, onUiSound, onCompass }) {
     this.onSelectSeed = onSelectSeed || (() => {});
     this.onToggleMute = onToggleMute || (() => {});
     this.onCustomize = onCustomize || (() => {});
@@ -19,6 +19,7 @@ export class HUD {
     this.onReset = onReset || (() => {});
     this.onWeather = onWeather || (() => {});
     this.onUiSound = onUiSound || (() => {});
+    this.onCompass = onCompass || (() => {});
     this._pauseOpen = false;
     this.seedSlots = {};
     this._toastTimer = null;
@@ -220,11 +221,12 @@ export class HUD {
       el('div', { class: 'breath-bar' }, [this.breathFill]),
     ]);
 
-    // treasure compass (arrow + distance)
+    // compass (arrow + distance) — click to change target
     this.compassArrow = el('div', { class: 'compass-arrow' });
     this.compassDist = el('span', { class: 'compass-dist', text: '' });
-    this.compassEl = el('div', { class: 'compass' }, [
-      el('span', { class: 'compass-ico', text: '🧰' }),
+    this.compassIco = el('span', { class: 'compass-ico', text: '🧰' });
+    this.compassEl = el('div', { class: 'compass', title: 'Ganti target (J)', onClick: () => this.onCompass() }, [
+      this.compassIco,
       this.compassArrow,
       this.compassDist,
     ]);
@@ -232,9 +234,10 @@ export class HUD {
     root.append(top, missions, this.invEl, help, this.toastEl, this.breathEl, this.compassEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.pauseEl, this.touchEl);
   }
 
-  setCompass(angleRad, dist) {
+  setCompass(angleRad, dist, icon) {
     this.compassArrow.style.transform = `rotate(${angleRad}rad)`;
     this.compassDist.textContent = `${Math.round(dist)} m`;
+    if (icon) this.compassIco.textContent = icon;
   }
 
   setBreath(visible, frac = 1) {
