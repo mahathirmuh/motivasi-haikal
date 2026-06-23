@@ -153,6 +153,24 @@ export function sfxDing() {
   );
 }
 
+export function sfxThunder() {
+  const dur = 1.0;
+  const n = Math.ceil(dur * SR);
+  const out = new Float32Array(n);
+  let lp = 0;
+  let lp2 = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const w = Math.random() * 2 - 1;
+    lp += (w - lp) * 0.04;
+    lp2 += (lp - lp2) * 0.06; // deep low-passed rumble
+    const env = Math.min(1, t / 0.015) * Math.exp(-t * 3.0);
+    const crack = Math.sin(2 * Math.PI * 60 * t) * 0.12 * Math.exp(-t * 6);
+    out[i] = (lp2 * 0.9 + crack) * env;
+  }
+  return encodeWav(out);
+}
+
 export function sfxJump() {
   // quick low->high "boing"
   return encodeWav(

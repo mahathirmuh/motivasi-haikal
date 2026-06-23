@@ -231,7 +231,16 @@ export class HUD {
       this.compassDist,
     ]);
 
-    root.append(top, missions, this.invEl, help, this.toastEl, this.breathEl, this.compassEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.pauseEl, this.touchEl);
+    // lightning flash overlay
+    this.flashEl = el('div', { class: 'flash' });
+
+    root.append(top, missions, this.invEl, help, this.toastEl, this.breathEl, this.compassEl, this.flashEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.pauseEl, this.touchEl);
+  }
+
+  flash() {
+    this.flashEl.classList.remove('go');
+    void this.flashEl.offsetWidth; // restart the animation
+    this.flashEl.classList.add('go');
   }
 
   setCompass(angleRad, dist, icon) {

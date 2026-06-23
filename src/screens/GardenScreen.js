@@ -66,6 +66,8 @@ export class GardenScreen {
     this._orchidCd = 0;
     this._buildIsland2Decor();
     this._buildDock();
+    this._escortGulls = this._buildEscortGulls();
+    this._stormCd = 6;
     this.particles = new Particles(this.scene);
     this.fireflies = new Fireflies(this.scene);
     this.butterflies = new Butterflies(this.scene);
@@ -841,6 +843,59 @@ export class GardenScreen {
     }
   }
 
+  _buildEscortGulls() {
+    const gulls = [];
+    const mat = new THREE.MeshBasicMaterial({ color: 0xfbfbf5, side: THREE.DoubleSide });
+    const wingGeo = new THREE.PlaneGeometry(0.9, 0.28);
+    for (let i = 0; i < 2; i++) {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), mat);
+      body.scale.set(1, 0.6, 1.7);
+      g.add(body);
+      const mk = (s) => {
+        const p = new THREE.Group();
+        const w = new THREE.Mesh(wingGeo, mat);
+        w.rotation.x = -Math.PI / 2;
+        w.position.x = s * 0.45;
+        p.add(w);
+        g.add(p);
+        return p;
+      };
+      g.userData = { wingL: mk(-1), wingR: mk(1), phase: i * Math.PI };
+      g.visible = false;
+      this.scene.add(g);
+      gulls.push(g);
+    }
+    return gulls;
+  }
+
+  _updateEscortGulls() {
+    const t = this.app.clock.elapsedTime;
+    const show = this._boating;
+    for (const g of this._escortGulls) {
+      g.visible = show;
+      if (!show) continue;
+      const u = g.userData;
+      const ang = t * 0.8 + u.phase;
+      const b = this.boat.position;
+      g.position.set(b.x + Math.cos(ang) * 3, b.y + 3.2 + Math.sin(t * 1.5 + u.phase) * 0.3, b.z + Math.sin(ang) * 3);
+      g.rotation.y = -ang + Math.PI / 2;
+      const flap = Math.sin(t * 10 + u.phase) * 0.6;
+      u.wingL.rotation.z = flap;
+      u.wingR.rotation.z = -flap;
+    }
+  }
+
+  _updateStorm(dt) {
+    this._stormCd -= dt;
+    if (!this._boating || this._stormCd > 0) return;
+    this._stormCd = 5 + Math.random() * 9;
+    if (this._nearestLandMargin() > 14 && Math.random() < 0.7) {
+      this.hud.flash();
+      this.app.audio?.play('thunder');
+    }
+  }
+
   _updateSeaMist() {
     if (!this.scene.fog || !this._fogBase) return;
     const margin = this._nearestLandMargin();
@@ -1335,6 +1390,8 @@ export class GardenScreen {
     this._checkTreasure();
     this._checkOrchidBush(dt);
     this._checkDiscovery();
+    this._updateEscortGulls();
+    this._updateStorm(dt);
     this._updateSeaMist();
     this._updateCompass();
     this.weather?.update(dt);

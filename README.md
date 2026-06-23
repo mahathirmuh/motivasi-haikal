@@ -36,8 +36,10 @@ real `.glb` models / audio later.
   you can pick for rare orchid seeds, and finding it the first time gives a bonus.
 - **Compass targets**: click the compass (or press `J`) to point it at the treasure
   🧰, the far island 🏝️, or back home 🏡 — handy for finding your way back.
-- **Atmosphere**: a wooden **dock** where the boat is moored, and **sea mist** that
-  rolls in the farther you sail from land (and clears as you near a shore).
+- **Atmosphere**: a wooden **dock** where the boat is moored, **sea mist** that
+  rolls in the farther you sail from land (clearing as you near a shore), a pair of
+  **seagulls escorting your boat**, and the odd **lightning flash + thunder** when
+  you're far out in deep water.
 - **Levels & XP**: gardening and fishing earn XP; level up for a coin bonus and a
   little celebration. Your level + XP bar show top-left, and your name floats
   above your character.
