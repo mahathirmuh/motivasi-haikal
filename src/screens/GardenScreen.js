@@ -29,6 +29,16 @@ import { ACHIEVEMENTS } from '../config/achievements.js';
 import { getUpgrade, upgradeCost } from '../config/upgrades.js';
 import { mods, recomputeMods } from '../core/modifiers.js';
 
+// Intan (the chick) pleads to be waited for when she trails too far behind.
+// Hysteresis (FAR to show, NEAR to hide) keeps the bubble from flickering.
+const PET_WAIT_FAR = 4.2;
+const PET_WAIT_NEAR = 3.2;
+const PET_PLEAS = [
+  'Tungguin Intan, kak! 🐤',
+  'Kak, jangan tinggalin Intan~ 🐥',
+  'Tungguin aku dong, kak! 🐤',
+];
+
 export class GardenScreen {
   constructor(app) {
     this.app = app;
@@ -108,9 +118,13 @@ export class GardenScreen {
     const nm = (state.data.profile.name || '').trim() || getPreset(state.data.profile.preset).name;
     this._nameTag = el('div', { class: 'name-tag', text: nm });
     uiRoot().appendChild(this._nameTag);
-    // pet's name tag
+    // pet's name tag + a "wait for me!" plea bubble when she trails behind
     this._petTag = el('div', { class: 'name-tag pet-tag', text: 'Intan' });
     uiRoot().appendChild(this._petTag);
+    this._petBubble = el('div', { class: 'npc-bubble pet-bubble hidden', text: PET_PLEAS[0] });
+    uiRoot().appendChild(this._petBubble);
+    this._petFar = false;
+    this._petPleaIdx = 0;
 
     this._buildPlots();
 
@@ -1529,13 +1543,34 @@ export class GardenScreen {
   _updatePetTag() {
     if (!this._petTag || !this.pet) return;
     const p = this.pet.group.position;
-    const v = new THREE.Vector3(p.x, p.y + 0.95, p.z).project(this.camera);
-    if (v.z < 1) {
-      this._petTag.style.left = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
-      this._petTag.style.top = `${(-v.y * 0.5 + 0.5) * window.innerHeight}px`;
-      this._petTag.classList.remove('hidden');
-    } else {
+    // far behind? -> she pleads (suppressed while you're off on the boat / drowning)
+    const dist = Math.hypot(this.avatar.position.x - p.x, this.avatar.position.z - p.z);
+    const canPlea = !this._boating && !this._drowning;
+    if (this._petFar) {
+      if (dist < PET_WAIT_NEAR || !canPlea) this._petFar = false;
+    } else if (dist > PET_WAIT_FAR && canPlea) {
+      this._petFar = true;
+      this._petPleaIdx = (this._petPleaIdx + 1) % PET_PLEAS.length;
+      this._petBubble.textContent = PET_PLEAS[this._petPleaIdx];
+    }
+
+    const place = (node, h) => {
+      const v = new THREE.Vector3(p.x, p.y + h, p.z).project(this.camera);
+      if (v.z < 1) {
+        node.style.left = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
+        node.style.top = `${(-v.y * 0.5 + 0.5) * window.innerHeight}px`;
+        node.classList.remove('hidden');
+      } else {
+        node.classList.add('hidden');
+      }
+    };
+
+    if (this._petFar) {
       this._petTag.classList.add('hidden');
+      place(this._petBubble, 1.15);
+    } else {
+      this._petBubble.classList.add('hidden');
+      place(this._petTag, 0.95);
     }
   }
 

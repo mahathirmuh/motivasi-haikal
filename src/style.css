@@ -872,6 +872,18 @@ body {
   display: none;
 }
 
+/* Intan's "wait for me!" plea bubble */
+.pet-bubble {
+  background: #fff3f7;
+  border-color: rgba(220, 120, 150, 0.32);
+  color: #9a3b58;
+  font-size: 13px;
+  max-width: 180px;
+}
+.pet-bubble::after {
+  border-top-color: #fff3f7;
+}
+
 .hud-help {
   position: absolute;
   bottom: 16px;
