@@ -22,9 +22,9 @@ import { Plot } from '../entities/Plot.js';
 import { HUD } from '../ui/HUD.js';
 import { Particles } from '../gfx/Particles.js';
 import { state } from '../core/state.js';
-import { GRID, ISLAND, ISLAND2, SEA_MAX, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH, SHOP_PRICES, plotUnlockCost } from '../config/constants.js';
+import { GRID, ISLAND, ISLAND2, SEA_MAX, HARVEST_COINS, HARVEST_SEED_REWARD, COLORS, DAY_LENGTH, SHOP_PRICES, plotUnlockCost, CHALLENGE, AVATAR } from '../config/constants.js';
 import { getFlower, FLOWER_IDS } from '../config/flowers.js';
-import { getPreset } from '../config/characters.js';
+import { getPreset, PRESETS } from '../config/characters.js';
 import { ACHIEVEMENTS } from '../config/achievements.js';
 import { getUpgrade, upgradeCost } from '../config/upgrades.js';
 import { mods, recomputeMods } from '../core/modifiers.js';
@@ -78,6 +78,15 @@ export class GardenScreen {
     this.fishing = { state: 'idle', timer: 0, bobber: null, baseY: 0 };
     this._drowning = false;
     this._swimming = false;
+
+    // timed "escape the monster" challenge (offered every CHALLENGE.interval)
+    this._challengeCd = CHALLENGE.interval;
+    this._offerActive = false; // an offer card is currently showing
+    this._offerT = 0;
+    this._challenge = null; // active run, or null
+    this._chaser = null;
+    this._challengeCoins = [];
+    this._roarCd = 0;
 
     // sailboat docked at the shore
     this.boat = new Boat(this.scene, new THREE.Vector3(4, ISLAND.seaY + 0.2, ISLAND.sandR - 1));
@@ -152,6 +161,8 @@ export class GardenScreen {
       onWeather: () => this._cycleWeather(),
       onUiSound: () => this.app.audio?.play('click'),
       onCompass: () => this._cycleCompass(),
+      onChallengeAccept: () => this._startChallenge(),
+      onChallengeDecline: () => this._declineChallenge(),
     });
     this._compassModes = [
       { key: 'treasure', icon: '🧰', name: 'Harta karun' },
@@ -590,6 +601,10 @@ export class GardenScreen {
 
   // ---------- fishing ----------
   _fish() {
+    if (this._challenge) {
+      this.hud.toast('Selesaikan tantangan dulu! 🦖');
+      return;
+    }
     const f = this.fishing;
     if (f.state === 'bite') {
       this._catchFish();
@@ -726,6 +741,10 @@ export class GardenScreen {
   }
 
   _boardBoat() {
+    if (this._challenge) {
+      this.hud.toast('Selesaikan tantangan dulu! 🦖');
+      return;
+    }
     if (this._boating || !this._nearBoat()) {
       if (!this._boating) this.hud.toast('Dekati perahu untuk naik ⛵');
       return;
@@ -898,6 +917,262 @@ export class GardenScreen {
     if (this._nearestLandMargin() > 14 && Math.random() < 0.7) {
       this.hud.flash();
       this.app.audio?.play('thunder');
+    }
+  }
+
+  // ---------- timed challenge: grab coins while a Godzilla / dino chases you ----------
+  _onLand() {
+    return !this._boating && !this._swimming && !this._drowning && this._nearestLandMargin() <= 0;
+  }
+
+  _eligibleForChallenge() {
+    return (
+      !this._challenge &&
+      !this._offerActive &&
+      !this._isFishing() &&
+      this.avatar.airY <= 0.01 &&
+      this._onLand() &&
+      !this.hud.anyPanelOpen()
+    );
+  }
+
+  _updateChallengeFlow(dt) {
+    if (this._challenge) {
+      this._runChallenge(dt);
+      return;
+    }
+    if (this._offerActive) {
+      this._offerT -= dt;
+      this.hud.setChallengeOfferTimer(this._offerT);
+      if (this._offerT <= 0) this._declineChallenge();
+      return;
+    }
+    this._challengeCd -= dt;
+    if (this._challengeCd <= 0 && this._eligibleForChallenge()) this._offerChallenge();
+  }
+
+  _offerChallenge() {
+    this._offerActive = true;
+    this._offerT = CHALLENGE.offerTimeout;
+    this._pendingChaser = Math.random() < 0.5 ? 'godzilla' : 'dino';
+    const who = this._pendingChaser === 'godzilla' ? 'Godzilla' : 'Dinosaurus';
+    this.hud.showChallengeOffer(`Kumpulkan koin sambil lari dari ${who}! Berani coba?`);
+    this.hud.setChallengeOfferTimer(this._offerT);
+    this.app.audio?.play('ding');
+  }
+
+  _declineChallenge() {
+    if (!this._offerActive) return;
+    this._offerActive = false;
+    this._challengeCd = CHALLENGE.interval;
+    this.hud.hideChallengeOffer();
+    this.app.audio?.play('click');
+    this.hud.toast('Tantangan dilewati — nanti ada lagi ya! ⏱️');
+  }
+
+  _startChallenge() {
+    if (this._challenge) return;
+    if (!this._onLand()) {
+      this.hud.toast('Kembali ke darat dulu untuk bertanding 🏝️');
+      return;
+    }
+    this._offerActive = false;
+    this.hud.hideChallengeOffer();
+
+    const kind = this._pendingChaser || (Math.random() < 0.5 ? 'godzilla' : 'dino');
+    const who = kind === 'godzilla' ? 'Godzilla' : 'Dino';
+    const idx = PRESETS.findIndex((p) => p.id === kind);
+
+    // reuse the Avatar body for the chaser — big & menacing
+    const chaser = new Avatar({ name: who, gender: 'male', preset: idx >= 0 ? idx : 4 });
+    chaser.obstacles = this.avatar.obstacles; // weaves around rocks too
+    chaser.root.scale.setScalar(1.35);
+    const ax = this.avatar.position.x;
+    const az = this.avatar.position.z;
+    // spawn out along the player's offset from centre (fallback: +z)
+    let dirx = ax;
+    let dirz = az;
+    const dl = Math.hypot(dirx, dirz);
+    if (dl < 0.5) {
+      dirx = 0;
+      dirz = 1;
+    } else {
+      dirx /= dl;
+      dirz /= dl;
+    }
+    let sx = ax + dirx * CHALLENGE.spawnDist;
+    let sz = az + dirz * CHALLENGE.spawnDist;
+    const sr = Math.hypot(sx, sz);
+    const maxR = ISLAND.walkR - 0.5;
+    if (sr > maxR) {
+      sx *= maxR / sr;
+      sz *= maxR / sr;
+    }
+    chaser.root.position.set(sx, 0, sz);
+    chaser._faceTarget = Math.atan2(ax - sx, az - sz);
+    chaser.root.rotation.y = chaser._faceTarget;
+    this.scene.add(chaser.root);
+    this._chaser = chaser;
+
+    // chaser name tag
+    this._chaserTag = el('div', { class: 'name-tag', text: who });
+    uiRoot().appendChild(this._chaserTag);
+
+    // scatter coins over the walkable area, not on top of the player
+    this._challengeCoins = [];
+    let guard = 0;
+    while (this._challengeCoins.length < CHALLENGE.coinCount && guard < 500) {
+      guard++;
+      const a = Math.random() * Math.PI * 2;
+      const r = 3 + Math.random() * (ISLAND.walkR - 4);
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      if (Math.hypot(x - ax, z - az) < 2.5) continue;
+      const coin = this._makeChallengeCoin();
+      coin.position.set(x, 0.9, z);
+      this.scene.add(coin);
+      this._challengeCoins.push(coin);
+    }
+
+    this._challenge = { time: CHALLENGE.duration, collected: 0, total: this._challengeCoins.length, kind, who };
+    this._roarCd = 0.2;
+    this.hud.showChallengeBanner(kind === 'godzilla' ? '🦖' : '🦕');
+    this.hud.setChallengeStatus(CHALLENGE.duration, 0, this._challenge.total);
+    this.app.audio?.play('roar');
+    this.hud.toast(`Lari! ${who} mengejar — kumpulkan koin! 🏃`);
+  }
+
+  _makeChallengeCoin() {
+    const g = new THREE.Group();
+    const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.07, 16), toon('#ffd34d'));
+    coin.rotation.z = Math.PI / 2; // face up like a spinning token
+    addOutline(coin, { thickness: 0.018 });
+    g.add(coin);
+    g.userData.phase = Math.random() * Math.PI * 2;
+    return g;
+  }
+
+  _runChallenge(dt) {
+    const c = this._challenge;
+    // freeze the chase while a menu/pause is open (can't be caught in a panel)
+    if (this.hud.anyPanelOpen()) return;
+
+    const t = this.app.clock.elapsedTime;
+    const ax = this.avatar.position.x;
+    const az = this.avatar.position.z;
+
+    c.time -= dt;
+    this.hud.setChallengeStatus(c.time, c.collected, c.total);
+
+    // chase: head for the player, speeding up as the clock runs down
+    const ch = this._chaser;
+    const frac = 1 - Math.max(0, c.time) / CHALLENGE.duration;
+    ch.speedMul = CHALLENGE.chaserSpeedStart + (CHALLENGE.chaserSpeedEnd - CHALLENGE.chaserSpeedStart) * frac;
+    const dx = ax - ch.position.x;
+    const dz = az - ch.position.z;
+    const d = Math.hypot(dx, dz) || 1;
+    ch.setMoveVector(dx / d, dz / d);
+    ch.update(dt);
+    ch.root.position.y = 0;
+    this._updateTagFor(this._chaserTag, ch.root.position, 2.7 * ch.root.scale.y);
+
+    // periodic roar
+    this._roarCd -= dt;
+    if (this._roarCd <= 0) {
+      this._roarCd = 3.5 + Math.random() * 2.5;
+      this.app.audio?.play('roar');
+    }
+
+    // coin pickups
+    for (let i = this._challengeCoins.length - 1; i >= 0; i--) {
+      const coin = this._challengeCoins[i];
+      coin.rotation.y += dt * 3;
+      coin.position.y = 0.9 + Math.sin(t * 3 + coin.userData.phase) * 0.12;
+      if (Math.hypot(coin.position.x - ax, coin.position.z - az) < CHALLENGE.pickupRadius) {
+        this.scene.remove(coin);
+        coin.traverse((o) => {
+          if (o.isMesh) {
+            o.geometry?.dispose?.();
+            o.material?.dispose?.();
+          }
+        });
+        this._challengeCoins.splice(i, 1);
+        c.collected++;
+        state.addCoins(CHALLENGE.coinValue);
+        this.app.audio?.play('pop');
+        this.particles?.burst(new THREE.Vector3(ax, 1.0, az), ['#ffd166', '#ffe48a', '#ffffff'], 8);
+        this._floatWorld(new THREE.Vector3(ax, 1.4, az), `+${CHALLENGE.coinValue} 🪙`, '#8a5a1a');
+        this.hud.setChallengeStatus(c.time, c.collected, c.total);
+        this._refreshHUD();
+      }
+    }
+
+    // resolve win / lose
+    if (c.collected >= c.total && c.total > 0) {
+      this._endChallenge('cleared');
+      return;
+    }
+    if (Math.hypot(ch.position.x - ax, ch.position.z - az) < CHALLENGE.catchRadius) {
+      this._endChallenge('caught');
+      return;
+    }
+    if (c.time <= 0) this._endChallenge('survived');
+  }
+
+  _endChallenge(result) {
+    const c = this._challenge;
+    if (!c) return;
+    let bonus = 0;
+    if (result === 'cleared') bonus = CHALLENGE.surviveBonus + CHALLENGE.clearBonus;
+    else if (result === 'survived') bonus = CHALLENGE.surviveBonus;
+    if (bonus > 0) state.addCoins(bonus);
+    this._awardXp(6 + c.collected * 2 + (result === 'caught' ? 0 : 12));
+
+    if (result === 'caught') this.hud.toast(`Tertangkap ${c.who}! 🦖 Tapi dapat ${c.collected} koin 🪙`);
+    else if (result === 'cleared') this.hud.toast(`HEBAT! Semua koin terkumpul! +${bonus} 🪙 🎉`);
+    else this.hud.toast(`Selamat, kamu lolos! +${bonus} 🪙 🏆`);
+
+    if (bonus > 0) this._handleCompletions(state.missionEvent('earn', { amount: bonus }));
+    this.app.audio?.play(result === 'caught' ? 'water' : 'ding');
+
+    this._clearChallengeObjects();
+    this.hud.hideChallengeBanner();
+    this._challenge = null;
+    this._challengeCd = CHALLENGE.interval;
+    this._refreshHUD();
+  }
+
+  _clearChallengeObjects() {
+    if (this._chaser) {
+      this.scene.remove(this._chaser.root);
+      this._chaser._dispose();
+      this._chaser = null;
+    }
+    if (this._chaserTag) {
+      this._chaserTag.remove();
+      this._chaserTag = null;
+    }
+    for (const coin of this._challengeCoins) {
+      this.scene.remove(coin);
+      coin.traverse((o) => {
+        if (o.isMesh) {
+          o.geometry?.dispose?.();
+          o.material?.dispose?.();
+        }
+      });
+    }
+    this._challengeCoins = [];
+  }
+
+  _updateTagFor(tag, pos, h) {
+    if (!tag) return;
+    const v = new THREE.Vector3(pos.x, pos.y + h, pos.z).project(this.camera);
+    if (v.z < 1) {
+      tag.style.left = `${(v.x * 0.5 + 0.5) * window.innerWidth}px`;
+      tag.style.top = `${(-v.y * 0.5 + 0.5) * window.innerHeight}px`;
+      tag.classList.remove('hidden');
+    } else {
+      tag.classList.add('hidden');
     }
   }
 
@@ -1398,6 +1673,7 @@ export class GardenScreen {
     this._checkTreasure();
     this._checkOrchidBush(dt);
     this._checkDiscovery();
+    this._updateChallengeFlow(dt);
     this._updateEscortGulls();
     this._updateStorm(dt);
     this._updateSeaMist();
@@ -1444,6 +1720,7 @@ export class GardenScreen {
     window.removeEventListener('keydown', this._onKeyDown);
     window.removeEventListener('keyup', this._onKeyUp);
     this._removeBobber();
+    this._clearChallengeObjects();
     dom.style.cursor = 'default';
     this.controls?.dispose();
     // ambiance keeps playing across screens (still by the sea)

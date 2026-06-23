@@ -7,7 +7,7 @@ import { ACHIEVEMENTS } from '../config/achievements.js';
 import { UPGRADES, upgradeCost } from '../config/upgrades.js';
 
 export class HUD {
-  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction, onBuyUpgrade, onJump, onFish, onReset, onWeather, onUiSound, onCompass }) {
+  constructor({ onSelectSeed, onToggleMute, onCustomize, onBuySeed, onAction, onBuyUpgrade, onJump, onFish, onReset, onWeather, onUiSound, onCompass, onChallengeAccept, onChallengeDecline }) {
     this.onSelectSeed = onSelectSeed || (() => {});
     this.onToggleMute = onToggleMute || (() => {});
     this.onCustomize = onCustomize || (() => {});
@@ -20,6 +20,8 @@ export class HUD {
     this.onWeather = onWeather || (() => {});
     this.onUiSound = onUiSound || (() => {});
     this.onCompass = onCompass || (() => {});
+    this.onChallengeAccept = onChallengeAccept || (() => {});
+    this.onChallengeDecline = onChallengeDecline || (() => {});
     this._pauseOpen = false;
     this.seedSlots = {};
     this._toastTimer = null;
@@ -234,7 +236,55 @@ export class HUD {
     // lightning flash overlay
     this.flashEl = el('div', { class: 'flash' });
 
-    root.append(top, missions, this.invEl, help, this.toastEl, this.breathEl, this.compassEl, this.flashEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.pauseEl, this.touchEl);
+    // challenge: opt-in offer card (top-center, doesn't block play)
+    this.challengeOfferText = el('div', { class: 'ch-offer-text' });
+    this.challengeOfferTimer = el('div', { class: 'ch-offer-timer' });
+    this.challengeOfferEl = el('div', { class: 'ch-offer hidden' }, [
+      el('div', { class: 'ch-offer-title', text: '🦖 Tantangan!' }),
+      this.challengeOfferText,
+      el('div', { class: 'ch-offer-btns' }, [
+        el('button', { class: 'btn btn--primary', onClick: () => this.onChallengeAccept() }, 'Ayo! 🏃'),
+        el('button', { class: 'btn btn--ghost', onClick: () => this.onChallengeDecline() }, 'Nanti'),
+      ]),
+      this.challengeOfferTimer,
+    ]);
+
+    // challenge: live status banner while playing
+    this.challengeBannerIco = el('span', { class: 'ch-ico', text: '🦖' });
+    this.challengeBannerTime = el('span', { class: 'ch-time', text: '' });
+    this.challengeBannerCoins = el('span', { class: 'ch-coins', text: '' });
+    this.challengeBannerEl = el('div', { class: 'ch-banner hidden' }, [
+      this.challengeBannerIco,
+      this.challengeBannerTime,
+      this.challengeBannerCoins,
+    ]);
+
+    root.append(top, missions, this.invEl, help, this.toastEl, this.breathEl, this.compassEl, this.flashEl, this.challengeOfferEl, this.challengeBannerEl, this.shopEl, this.albumEl, this.achEl, this.upgEl, this.pauseEl, this.touchEl);
+  }
+
+  // ---------- challenge ----------
+  showChallengeOffer(text) {
+    this.challengeOfferText.textContent = text;
+    this.challengeOfferEl.classList.remove('hidden');
+  }
+  setChallengeOfferTimer(secs) {
+    this.challengeOfferTimer.textContent = `lewat dalam ${Math.ceil(secs)}s…`;
+  }
+  hideChallengeOffer() {
+    this.challengeOfferEl.classList.add('hidden');
+  }
+  showChallengeBanner(icon) {
+    if (icon) this.challengeBannerIco.textContent = icon;
+    this.challengeBannerEl.classList.remove('hidden');
+  }
+  setChallengeStatus(timeLeft, collected, total) {
+    this.challengeBannerTime.textContent = `⏱ ${Math.ceil(Math.max(0, timeLeft))}s`;
+    this.challengeBannerCoins.textContent = `🪙 ${collected}/${total}`;
+    this.challengeBannerEl.classList.toggle('danger', timeLeft <= 8);
+  }
+  hideChallengeBanner() {
+    this.challengeBannerEl.classList.add('hidden');
+    this.challengeBannerEl.classList.remove('danger');
   }
 
   flash() {

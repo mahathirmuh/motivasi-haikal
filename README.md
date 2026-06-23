@@ -59,6 +59,13 @@ real `.glb` models / audio later.
 - **Living scene & weather**: butterflies by day, fireflies at night, crabs
   scuttling on the sand, fish leaping from the sea, shooting stars at night, and
   occasional **rain** (which auto-waters the garden) clearing into a **rainbow**.
+- **Timed challenge** ("Lari dari Godzilla"): every ~3 minutes an **opt-in**
+  challenge card pops up (Ayo! / Nanti). Accept it and coins scatter across the
+  island while a **Godzilla or dinosaur chases you** — weave around the rocks,
+  grab as many coins as you can before time runs out, and don't get caught. A
+  live timer + coin counter banner shows your progress, with bonuses for
+  surviving the full time or clearing every coin (the chase pauses if you open a
+  menu, so you can't be caught in a panel).
 - **Flower album + achievements**: a collection panel tracking discovered/
   harvested flowers, and unlockable achievements with progress.
 - **Upgrades & expansion**: spend coins on permanent upgrades — faster growth

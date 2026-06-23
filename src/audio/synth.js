@@ -171,6 +171,28 @@ export function sfxThunder() {
   return encodeWav(out);
 }
 
+export function sfxRoar() {
+  // a low, descending monster growl: integrated falling pitch + harmonics, a
+  // growly amplitude flutter, and a layer of low-passed noise for grit.
+  const dur = 0.8;
+  const n = Math.ceil(dur * SR);
+  const out = new Float32Array(n);
+  let phase = 0;
+  let lp = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / SR;
+    const f = 150 - 85 * (t / dur); // 150 -> ~65 Hz
+    phase += (2 * Math.PI * f) / SR;
+    const tone = Math.sin(phase) + 0.5 * Math.sin(2 * phase) + 0.28 * Math.sin(3 * phase);
+    const w = Math.random() * 2 - 1;
+    lp += (w - lp) * 0.05; // grit
+    const growl = 1 + 0.45 * Math.sin(2 * Math.PI * 24 * t); // throaty flutter
+    const envv = Math.min(1, t / 0.05) * Math.min(1, (dur - t) / 0.22);
+    out[i] = (tone * 0.17 + lp * 0.3) * growl * envv;
+  }
+  return encodeWav(out);
+}
+
 export function sfxJump() {
   // quick low->high "boing"
   return encodeWav(

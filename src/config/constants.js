@@ -101,5 +101,23 @@ export const MISSION_COUNT = 4;
 // Day/night cycle length in seconds (full sunrise -> day -> sunset -> night).
 export const DAY_LENGTH = 140;
 
+// Optional timed "escape the monster" challenge. Offered every `interval`
+// seconds; the player chooses to play or skip. Collect coins while a Godzilla /
+// dinosaur chases you, until time runs out (or you get caught).
+export const CHALLENGE = {
+  interval: 180, // seconds between offers (3 minutes)
+  offerTimeout: 14, // how long the offer card lingers before auto-skipping
+  duration: 38, // seconds of chase
+  coinCount: 14, // collectibles scattered around the island
+  coinValue: 4, // coins per pickup (credited immediately)
+  surviveBonus: 30, // bonus coins for lasting the whole time
+  clearBonus: 40, // extra bonus for grabbing every coin
+  catchRadius: 1.5, // caught if the chaser gets this close
+  pickupRadius: 1.3,
+  chaserSpeedStart: 0.78, // * AVATAR.speed at the start (escapable)
+  chaserSpeedEnd: 1.0, // ramps up to this by the end (tense)
+  spawnDist: 11, // how far behind the player the chaser starts
+};
+
 // bumped to v2: dynamic-mission save shape + lily seeds
 export const SAVE_KEY = 'flowerGarden.save.v2';

@@ -921,6 +921,61 @@ body {
   color: #5a2e3e;
 }
 
+/* ---- timed "escape the monster" challenge ---- */
+.ch-offer {
+  position: absolute;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(330px, 88vw);
+  background: var(--panel);
+  border: 2px solid #ef9a6b;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 18px 12px;
+  text-align: center;
+  pointer-events: auto;
+  z-index: 22;
+  animation: chPop 0.25s ease both;
+}
+.ch-offer.hidden { display: none; }
+.ch-offer-title { font-size: 19px; font-weight: 800; color: #b4471f; }
+.ch-offer-text { font-size: 13px; color: var(--ink); margin: 6px 0 12px; line-height: 1.4; }
+.ch-offer-btns { display: flex; gap: 10px; justify-content: center; }
+.ch-offer-timer { margin-top: 9px; font-size: 11px; color: var(--ink-soft); font-weight: 700; }
+@keyframes chPop {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.96); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.ch-banner {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(74, 40, 30, 0.92);
+  color: #fff;
+  border-radius: 999px;
+  padding: 7px 18px;
+  box-shadow: var(--shadow);
+  font-weight: 800;
+  z-index: 17;
+}
+.ch-banner.hidden { display: none; }
+.ch-banner .ch-ico { font-size: 18px; }
+.ch-banner .ch-time { min-width: 44px; }
+.ch-banner.danger {
+  background: rgba(185, 40, 25, 0.95);
+  animation: chPulse 0.6s ease infinite;
+}
+@keyframes chPulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.06); }
+}
+
 @media (max-width: 540px) {
   .hud-missions { top: 64px; }
   .seed-slot { width: 56px; height: 64px; }
