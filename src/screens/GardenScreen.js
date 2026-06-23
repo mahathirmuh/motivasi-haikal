@@ -50,6 +50,8 @@ export class GardenScreen {
     this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
 
     addFog(this.scene, 45, 150);
+    this._fogBase = this.scene.fog.color.clone();
+    this._fogMist = new THREE.Color('#a9c2cf');
     this.lights = addLights(this.scene, { shadow: true, shadowSize: 16 });
     this.sun = this.lights.sun;
     this.sky = new Sky(this.scene);
@@ -63,6 +65,7 @@ export class GardenScreen {
     ];
     this._orchidCd = 0;
     this._buildIsland2Decor();
+    this._buildDock();
     this.particles = new Particles(this.scene);
     this.fireflies = new Fireflies(this.scene);
     this.butterflies = new Butterflies(this.scene);
@@ -808,6 +811,45 @@ export class GardenScreen {
     }
   }
 
+  _buildDock() {
+    const dir = new THREE.Vector3(4, 0, ISLAND.sandR - 1).normalize();
+    const g = new THREE.Group();
+    g.position.set(dir.x * 15.5, 0, dir.z * 15.5);
+    g.rotation.y = Math.atan2(dir.x, dir.z);
+    this.scene.add(g);
+    const T = (geo, c, t = 0.016) => {
+      const m = new THREE.Mesh(geo, toon(c));
+      m.receiveShadow = true;
+      addOutline(m, { thickness: t });
+      return m;
+    };
+    const deck = T(new THREE.BoxGeometry(1.5, 0.14, 6), '#8a5a2b');
+    deck.position.y = 0.1;
+    g.add(deck);
+    for (let i = -2; i <= 2; i++) {
+      const plank = T(new THREE.BoxGeometry(1.5, 0.16, 0.1), '#6f3f24', 0.008);
+      plank.position.set(0, 0.11, i * 1.1);
+      g.add(plank);
+    }
+    const H = 0.1 - (ISLAND.seaY - 0.4);
+    for (const sx of [-0.62, 0.62]) {
+      for (const sz of [-2.6, 0, 2.6]) {
+        const post = T(new THREE.CylinderGeometry(0.1, 0.1, H, 6), '#6b4a2b', 0.01);
+        post.position.set(sx, 0.1 - H / 2, sz);
+        g.add(post);
+      }
+    }
+  }
+
+  _updateSeaMist() {
+    if (!this.scene.fog || !this._fogBase) return;
+    const margin = this._nearestLandMargin();
+    const t = Math.max(0, Math.min(1, margin / 12)); // 0 near land .. 1 deep sea
+    this.scene.fog.near = 45 - t * 24;
+    this.scene.fog.far = 150 - t * 88;
+    this.scene.fog.color.copy(this._fogBase).lerp(this._fogMist, t * 0.85);
+  }
+
   _buildIsland2Decor() {
     const g = new THREE.Group();
     g.position.set(ISLAND2.x, 0, ISLAND2.z);
@@ -1293,6 +1335,7 @@ export class GardenScreen {
     this._checkTreasure();
     this._checkOrchidBush(dt);
     this._checkDiscovery();
+    this._updateSeaMist();
     this._updateCompass();
     this.weather?.update(dt);
     if (this.weather && this.weather.state !== this._lastWeather) {
