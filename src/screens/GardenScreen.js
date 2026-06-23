@@ -34,9 +34,9 @@ import { mods, recomputeMods } from '../core/modifiers.js';
 const PET_WAIT_FAR = 4.2;
 const PET_WAIT_NEAR = 3.2;
 const PET_PLEAS = [
-  'Tungguin Intan, kak! 🐤',
-  'Kak, jangan tinggalin Intan~ 🐥',
-  'Tungguin aku dong, kak! 🐤',
+  'Tungguin Intan, de! 🐤',
+  'De, jangan tinggalin Intan~ 🐥',
+  'Tungguin aku dong, de! 🐤',
 ];
 
 export class GardenScreen {
