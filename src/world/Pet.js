@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { toon } from '../gfx/toon.js';
 import { addOutline } from '../gfx/outline.js';
+import { clamp, damp, dampAngle } from '../utils/math.js';
 
 export class Pet {
   constructor(scene, start) {
@@ -46,22 +47,37 @@ export class Pet {
 
     scene.add(this.group);
     this.hop = 0;
+    this.spd = 0; // eased ground speed (smooth accel/decel)
   }
 
   /** Follow `target` (avatar position), keeping a small gap; hop while moving. */
   update(dt, target) {
-    const dx = target.x - this.group.position.x;
-    const dz = target.z - this.group.position.z;
+    const pos = this.group.position;
+    const dx = target.x - pos.x;
+    const dz = target.z - pos.z;
     const dist = Math.hypot(dx, dz);
-    let moving = 0;
-    if (dist > 1.4) {
-      const sp = Math.min(dist - 1.2, 5.5 * dt);
-      this.group.position.x += (dx / dist) * sp;
-      this.group.position.z += (dz / dist) * sp;
-      this.group.rotation.y = Math.atan2(dx, dz);
-      moving = 1;
+    const GAP = 1.3;
+
+    // Desired speed ramps up smoothly the farther past the gap we are (no on/off
+    // toggle), then we ease the actual speed toward it so starts & stops glide.
+    const desired = clamp((dist - GAP) * 4, 0, 5.5);
+    this.spd = damp(this.spd, desired, 9, dt);
+
+    // Step toward the target but never cross into the gap (prevents overshoot
+    // jitter when catching up).
+    const step = Math.min(this.spd * dt, Math.max(0, dist - GAP));
+    if (step > 1e-4 && dist > 1e-4) {
+      const inv = 1 / dist;
+      pos.x += dx * inv * step;
+      pos.z += dz * inv * step;
+      // Turn to face travel direction, damped so it never snaps or jitters.
+      this.group.rotation.y = dampAngle(this.group.rotation.y, Math.atan2(dx, dz), 10, dt);
     }
-    this.hop += dt * (moving ? 13 : 3);
-    this.group.position.y = Math.abs(Math.sin(this.hop)) * (moving ? 0.2 : 0.04);
+
+    // Hop amplitude + frequency blend with the eased speed, so the bounce grows
+    // and fades smoothly instead of popping between walk/idle.
+    const m = clamp(this.spd / 4, 0, 1);
+    this.hop += dt * (3 + 10 * m);
+    pos.y = Math.abs(Math.sin(this.hop)) * (0.04 + 0.16 * m);
   }
 }

@@ -110,6 +110,8 @@ export class GardenScreen {
     this.avatar.root.position.set(0, 0, 6);
     this.avatar.root.rotation.y = Math.PI; // face the garden
     this.avatar._faceTarget = Math.PI;
+    // solid props the avatar slides around instead of phasing through
+    this.avatar.obstacles = [...this.scenery.obstacles, ...(this._island2Obstacles || [])];
     this.scene.add(this.avatar.root);
 
     // invisible ground for movement picking
@@ -912,6 +914,7 @@ export class GardenScreen {
     const g = new THREE.Group();
     g.position.set(ISLAND2.x, 0, ISLAND2.z);
     this.scene.add(g);
+    this._island2Obstacles = []; // solid props on the far island (world coords)
     const T = (geo, c, t = 0.02) => {
       const m = new THREE.Mesh(geo, toon(c));
       m.castShadow = true;
@@ -925,11 +928,13 @@ export class GardenScreen {
       const fol = T(new THREE.ConeGeometry(1.1, 2.0, 8), '#57a83f');
       fol.position.set(tx, 2.3, tz);
       g.add(fol);
+      this._island2Obstacles.push({ x: ISLAND2.x + tx, z: ISLAND2.z + tz, r: 0.3 });
     }
     for (const [rx, rz] of [[1.6, 2.4], [-2.1, -2.0]]) {
       const rock = T(new THREE.DodecahedronGeometry(0.5, 0), '#b9b3a6');
       rock.position.set(rx, 0.25, rz);
       g.add(rock);
+      this._island2Obstacles.push({ x: ISLAND2.x + rx, z: ISLAND2.z + rz, r: 0.4 });
     }
     // signpost
     const post = T(new THREE.CylinderGeometry(0.08, 0.08, 1.4, 6), '#6b4a2b', 0.012);

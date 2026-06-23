@@ -172,6 +172,7 @@ export class Scenery {
     scene.add(this.group);
     this.palms = [];
     this.gulls = [];
+    this.obstacles = []; // solid props the avatar can't walk through: {x,z,r}
 
     // palms near the beach
     for (let i = 0; i < 6; i++) {
@@ -179,18 +180,22 @@ export class Scenery {
       const [x, z] = ringPoint(ISLAND.grassR - 3.5, ISLAND.sandR - 0.8);
       p.position.set(x, 0, z);
       p.rotation.y = Math.random() * Math.PI * 2;
-      p.scale.setScalar(rand(0.85, 1.2));
+      const sc = rand(0.85, 1.2);
+      p.scale.setScalar(sc);
       this.palms.push(p);
       this.group.add(p);
+      this.obstacles.push({ x, z, r: 0.32 * sc }); // solid trunk
     }
 
     // rocks
     for (let i = 0; i < 11; i++) {
-      const r = makeRock(rand(0.4, 1.1));
+      const scale = rand(0.4, 1.1);
+      const r = makeRock(scale);
       const [x, z] = ringPoint(7, ISLAND.sandR - 0.5);
       r.position.x = x;
       r.position.z = z;
       this.group.add(r);
+      this.obstacles.push({ x, z, r: scale * 0.78 });
     }
 
     // grass tufts

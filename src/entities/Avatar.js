@@ -87,6 +87,8 @@ export class Avatar {
     this.vy = 0; // vertical velocity (jump)
     this.airY = 0; // height above ground
     this.speedMul = 1; // movement speed multiplier (e.g. slower while swimming)
+    this.obstacles = null; // solid props to slide around: [{x,z,r}]
+    this.bodyR = 0.35; // collision radius of the avatar
     // optional GLTF model + animation
     this.mixer = null;
     this.walkAction = null;
@@ -624,6 +626,29 @@ export class Avatar {
     return this.root.position;
   }
 
+  /** Push out of any solid prop so we can't walk through it; correcting only the
+   *  radial penetration leaves tangential motion intact, so we slide around it. */
+  _resolveObstacles() {
+    const list = this.obstacles;
+    if (!list || !list.length) return;
+    const p = this.root.position;
+    for (const o of list) {
+      const dx = p.x - o.x;
+      const dz = p.z - o.z;
+      const min = o.r + this.bodyR;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= min * min) continue;
+      if (d2 > 1e-6) {
+        const d = Math.sqrt(d2);
+        const push = (min - d) / d;
+        p.x += dx * push;
+        p.z += dz * push;
+      } else {
+        p.x += min; // dead-centre: nudge out along +x
+      }
+    }
+  }
+
   update(dt, audio = null) {
     this.time += dt;
     let moving01 = 0;
@@ -659,6 +684,9 @@ export class Avatar {
         if (audio) audio.footstep(this.time);
       }
     }
+
+    // can't walk through solid props (rocks, palm trunks) — slide around them
+    if (moving01) this._resolveObstacles();
 
     // face movement direction smoothly
     this.root.rotation.y = dampAngle(this.root.rotation.y, this._faceTarget, AVATAR.turnSpeed, dt);
