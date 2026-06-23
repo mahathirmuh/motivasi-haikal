@@ -111,7 +111,7 @@ export class GardenScreen {
     this._npcTipCd = 0;
     this._npcBubble = el('div', { class: 'npc-bubble hidden', text: MOTIVATION[0] });
     uiRoot().appendChild(this._npcBubble);
-    this._npcTag = el('div', { class: 'name-tag npc-tag', text: 'Mahathir' });
+    this._npcTag = el('div', { class: 'name-tag npc-tag', text: 'Mahathir (Om Tua)' });
     uiRoot().appendChild(this._npcTag);
 
     // floating name tag above the avatar
